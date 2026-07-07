@@ -1,10 +1,12 @@
 import { io } from 'socket.io-client'
 
-// VITE_SERVER_URL is injected at build time from network.config.json via vite.config.js
-// Fallback: same hostname as page, port 3001 (works when server & client co-located)
+// Tunnel mode: VITE_SERVER_URL is injected (e.g. https://abc.trycloudflare.com)
+// LAN mode:    no URL injected — derive from page hostname + server port at runtime
+//              e.g. opening http://172.21.32.1:5173 → connects to 172.21.32.1:3001
+//              opening http://localhost:5173        → connects to localhost:3001
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL ||
-  `http://${window.location.hostname}:3001`
+  `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_SERVER_PORT || '3001'}`
 
 export const socket = io(SERVER_URL, {
   autoConnect: false,
