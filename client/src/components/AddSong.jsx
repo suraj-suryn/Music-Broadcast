@@ -85,7 +85,7 @@ export default function AddSong() {
       <form onSubmit={handleAddYT} className="flex gap-2 mb-3">
         <input
           type="text"
-          placeholder="Paste YouTube URL…"
+          placeholder="e.g. https://youtu.be/dQw4w9WgXcQ"
           value={ytUrl}
           onChange={e => setYtUrl(e.target.value)}
           className="flex-1 min-w-0 bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 transition-colors placeholder-gray-600"
@@ -98,6 +98,12 @@ export default function AddSong() {
           {ytLoading ? '…' : '▶ Add'}
         </button>
       </form>
+
+      {/* Embeddable tip */}
+      <p className="text-xs text-gray-600 mb-3 leading-relaxed">
+        ⚠️ Some videos block embedding. Works best with: indie artists, Lofi channels,
+        VEVO, or try: <span className="text-gray-500 font-mono">youtu.be/dQw4w9WgXcQ</span>
+      </p>
 
       {/* File upload */}
       <label
