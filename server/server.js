@@ -35,6 +35,17 @@ app.use('/uploads', express.static(uploadsDir));
 // ── Routes ───────────────────────────────────────────────────
 app.use('/api/upload', require('./src/routes/upload'));
 
+// ── Serve built client (tunnel / production mode) ────────────
+// In tunnel mode the Vite dev server is not exposed, so we serve
+// the pre-built React app directly from Express on the same port.
+const distPath = path.join(__dirname, '../client/dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
 // ── Socket.io ────────────────────────────────────────────────
 const io = new Server(server, {
   cors: { origin: corsOrigin, methods: ['GET', 'POST'] },
