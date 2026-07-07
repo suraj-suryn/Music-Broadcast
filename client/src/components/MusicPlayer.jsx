@@ -13,6 +13,12 @@ const YT_ERROR_MSG = {
 // Player height presets (px)
 const HEIGHTS = { min: 52, normal: 220, max: 420 }
 
+// Human-readable quality labels
+const QUALITY_LABELS = {
+  highres: '4K', hd1080: '1080p', hd720: '720p',
+  large: '480p', medium: '360p', small: '240p', tiny: '144p', default: 'Auto'
+}
+
 // Small icon button used in the player overlay
 function CtrlBtn({ onClick, title, children, active }) {
   return (
@@ -37,6 +43,11 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
   const [embedError, setEmbedError] = useState(null)
   const [playerSize, setPlayerSize] = useState('normal') // 'min' | 'normal' | 'max'
   const [isFullscreen, setIsFullscreen] = useState(false)
+  const [quality, setQuality] = useState('default')
+  const [availableQualities, setAvailableQualities] = useState([])
+  // Refs keep values fresh inside YT event closures
+  const qualityRef = useRef('default')
+  const availableQualitiesRef = useRef([])
 
   // Latest values for async callbacks
   const playingRef = useRef(playing)
@@ -44,10 +55,14 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { currentTimeRef.current = currentTime }, [currentTime])
 
-  // Reset size when song changes
+  // Reset size + quality when song changes
   useEffect(() => {
     if (currentSong) setPlayerSize('normal')
     setEmbedError(null)
+    setQuality('default')
+    setAvailableQualities([])
+    qualityRef.current = 'default'
+    availableQualitiesRef.current = []
   }, [currentSong?.id])
 
   // Fullscreen API
@@ -115,6 +130,18 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
         },
         onStateChange(e) {
           if (e.data === window.YT.PlayerState.ENDED) socket.emit('song-ended')
+          // Populate quality list once video starts buffering/playing
+          if ((e.data === 1 || e.data === 3) && availableQualitiesRef.current.length === 0) {
+            const levels = e.target.getAvailableQualityLevels?.() ?? []
+            if (levels.length > 1) {
+              availableQualitiesRef.current = levels
+              setAvailableQualities(levels)
+              // Apply pre-selected quality if changed before list loaded
+              if (qualityRef.current !== 'default') {
+                e.target.setPlaybackQuality(qualityRef.current)
+              }
+            }
+          }
         },
         onError(e) {
           const msg = YT_ERROR_MSG[e.data] || `Player error (code ${e.data})`
@@ -154,6 +181,15 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
       }
     }
   }), [currentSong])
+
+  // Quality change — local to each viewer, no socket needed
+  function changeQuality(level) {
+    setQuality(level)
+    qualityRef.current = level
+    if (ytPlayerRef.current) {
+      try { ytPlayerRef.current.setPlaybackQuality(level) } catch {}
+    }
+  }
 
   // ── Shared size controls overlay ─────────────────────────
   function SizeControls() {
@@ -231,6 +267,22 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
         {!embedError && playerSize !== 'min' && (
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2 pointer-events-none">
             <p className="text-white text-sm font-medium truncate">{currentSong.title}</p>
+          </div>
+        )}
+
+        {/* Quality selector — bottom-left, appears once qualities load */}
+        {availableQualities.length > 1 && playerSize !== 'min' && !embedError && (
+          <div className="absolute bottom-8 left-2 z-20">
+            <select
+              value={quality}
+              onChange={e => changeQuality(e.target.value)}
+              title="Video quality (your view only)"
+              className="bg-black/70 hover:bg-black/90 text-white text-xs rounded px-1.5 py-1 border border-gray-600 focus:outline-none cursor-pointer"
+            >
+              {availableQualities.map(q => (
+                <option key={q} value={q}>{QUALITY_LABELS[q] ?? q}</option>
+              ))}
+            </select>
           </div>
         )}
       </div>
