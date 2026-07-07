@@ -11,7 +11,8 @@ const initialState = {
   queue: [],
   chat: [],
   votes: { votes: 0, total: 0, threshold: 0 },
-  error: null
+  error: null,
+  info: null
 }
 
 function reducer(state, action) {
@@ -61,6 +62,12 @@ function reducer(state, action) {
 
     case 'CLEAR_ERROR':
       return { ...state, error: null }
+
+    case 'SET_INFO':
+      return { ...state, info: action.message }
+
+    case 'CLEAR_INFO':
+      return { ...state, info: null }
 
     default:
       return state

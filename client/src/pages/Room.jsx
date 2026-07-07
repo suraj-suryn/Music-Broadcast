@@ -35,8 +35,13 @@ export default function Room() {
     function onNewMessage(message) {
       dispatch({ type: 'NEW_MESSAGE', message })
     }
-    function onUserJoined({ users }) {
+    function onUserJoined({ users, hostRestored }) {
       dispatch({ type: 'USERS_UPDATED', users })
+      if (hostRestored) {
+        const hostName = users.find(u => u.isHost)?.name
+        dispatch({ type: 'SET_INFO', message: `👑 ${hostName} (original host) has rejoined and taken control` })
+        setTimeout(() => dispatch({ type: 'CLEAR_INFO' }), 4000)
+      }
     }
     function onUserLeft({ users }) {
       dispatch({ type: 'USERS_UPDATED', users })
@@ -165,6 +170,13 @@ export default function Room() {
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Info toast — host restored notification */}
+      {state.info && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-xl text-sm z-50 text-center">
+          {state.info}
         </div>
       )}
     </div>

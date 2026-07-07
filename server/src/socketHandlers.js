@@ -27,12 +27,13 @@ module.exports = function registerHandlers(io, socket) {
     const result = joinRoom(roomCode.trim().toUpperCase(), socket.id, name.trim());
     if (result.error) return socket.emit('error', { message: result.error });
 
-    const { room, user } = result;
+    const { room, user, hostRestored } = result;
     socket.join(room.code);
 
     const currentTime = getCurrentTime(room);
     socket.emit('room-joined', { room: serializeRoom(room), user, currentTime });
-    socket.to(room.code).emit('user-joined', { users: room.users });
+    // Notify existing users — pass hostRestored so they can show a toast
+    socket.to(room.code).emit('user-joined', { users: room.users, hostRestored });
   });
 
   // ── Add to Queue (host only) ─────────────────────────────

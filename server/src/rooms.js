@@ -14,6 +14,7 @@ function createRoom(socket, hostName) {
   const host = { id: socket.id, name: hostName, isHost: true };
   const room = {
     code,
+    originalHostName: hostName, // persists so host can be restored on rejoin
     users: [host],
     queue: [],
     currentSong: null,
@@ -32,9 +33,18 @@ function joinRoom(code, socketId, name) {
   if (!room) return { error: 'Room not found' };
   if (room.users.length >= MAX_USERS) return { error: 'Room is full' };
 
-  const user = { id: socketId, name, isHost: false };
+  // Restore original host if they rejoin with the same name (case-insensitive)
+  const isRestoredHost =
+    name.trim().toLowerCase() === room.originalHostName.toLowerCase();
+
+  if (isRestoredHost) {
+    // Demote whoever is currently acting as temp host
+    room.users.forEach(u => { u.isHost = false; });
+  }
+
+  const user = { id: socketId, name, isHost: isRestoredHost };
   room.users.push(user);
-  return { room, user };
+  return { room, user, hostRestored: isRestoredHost };
 }
 
 function leaveRoom(socketId) {
@@ -80,6 +90,7 @@ function getCurrentTime(room) {
 function serializeRoom(room) {
   return {
     code: room.code,
+    originalHostName: room.originalHostName,
     users: room.users,
     queue: room.queue,
     currentSong: room.currentSong,
