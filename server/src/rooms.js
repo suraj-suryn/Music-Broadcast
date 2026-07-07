@@ -1,0 +1,100 @@
+const { v4: uuidv4 } = require('uuid');
+
+const rooms = new Map();
+const MAX_USERS = 20;
+
+function generateCode() {
+  return uuidv4().replace(/-/g, '').toUpperCase().slice(0, 6);
+}
+
+function createRoom(socket, hostName) {
+  let code;
+  do { code = generateCode(); } while (rooms.has(code));
+
+  const host = { id: socket.id, name: hostName, isHost: true };
+  const room = {
+    code,
+    users: [host],
+    queue: [],
+    currentSong: null,
+    playing: false,
+    startedAt: null,
+    playedSeconds: 0,
+    voteSkips: new Set(),
+    chat: []
+  };
+  rooms.set(code, room);
+  return { room, user: host };
+}
+
+function joinRoom(code, socketId, name) {
+  const room = rooms.get(code);
+  if (!room) return { error: 'Room not found' };
+  if (room.users.length >= MAX_USERS) return { error: 'Room is full' };
+
+  const user = { id: socketId, name, isHost: false };
+  room.users.push(user);
+  return { room, user };
+}
+
+function leaveRoom(socketId) {
+  for (const [code, room] of rooms) {
+    const idx = room.users.findIndex(u => u.id === socketId);
+    if (idx === -1) continue;
+
+    const wasHost = room.users[idx].isHost;
+    room.users.splice(idx, 1);
+    room.voteSkips.delete(socketId);
+
+    if (room.users.length === 0) {
+      rooms.delete(code);
+      return { code, users: [], hostChanged: false };
+    }
+
+    if (wasHost) {
+      room.users[0].isHost = true;
+    }
+
+    return { code, users: room.users, hostChanged: wasHost };
+  }
+  return null;
+}
+
+function getRoom(code) {
+  return rooms.get(code) || null;
+}
+
+function getRoomBySocket(socketId) {
+  for (const room of rooms.values()) {
+    if (room.users.some(u => u.id === socketId)) return room;
+  }
+  return null;
+}
+
+function getCurrentTime(room) {
+  if (!room.currentSong) return 0;
+  if (!room.playing || !room.startedAt) return room.playedSeconds;
+  return room.playedSeconds + (Date.now() - room.startedAt) / 1000;
+}
+
+function serializeRoom(room) {
+  return {
+    code: room.code,
+    users: room.users,
+    queue: room.queue,
+    currentSong: room.currentSong,
+    playing: room.playing,
+    playedSeconds: room.playedSeconds,
+    chat: room.chat,
+    voteSkips: Array.from(room.voteSkips)
+  };
+}
+
+module.exports = {
+  createRoom,
+  joinRoom,
+  leaveRoom,
+  getRoomBySocket,
+  getCurrentTime,
+  serializeRoom
+};
