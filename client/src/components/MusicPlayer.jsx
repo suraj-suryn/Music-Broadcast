@@ -125,6 +125,21 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
     navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
   }, [playing])
 
+  // ── Silent audio keepalive ───────────────────────────────
+  // Plays a near-silent loop while YouTube is active so mobile browsers
+  // treat the page as having live audio → music continues when screen
+  // locks, app is backgrounded, or another tab is opened.
+  useEffect(() => {
+    if (currentSong?.source !== 'youtube' || !playing) return
+    // 44-byte minimal silent WAV
+    const SILENT = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=='
+    const sa = new Audio(SILENT)
+    sa.loop   = true
+    sa.volume = 0.001   // inaudible
+    sa.play().catch(() => {})
+    return () => { sa.pause(); sa.src = '' }
+  }, [playing, currentSong?.id])
+
   // Load YouTube IFrame API once
   useEffect(() => {
     if (window.YT?.Player) { setYtReady(true); return }
@@ -165,6 +180,7 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
         modestbranding: 1,
         rel: 0,
         fs: 1,
+        playsinline: 1, // iOS Safari: prevent forced fullscreen on play
         origin: window.location.origin
       },
       events: {
@@ -269,12 +285,10 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
         className="relative bg-black shrink-0 overflow-hidden transition-[height] duration-200"
         style={{ height }}
       >
-        {/* Iframe — always rendered so audio keeps playing when minimized */}
-        <div
-          id="yt-player-container"
-          className="w-full h-full"
-          style={{ visibility: playerSize === 'min' ? 'hidden' : 'visible' }}
-        />
+        {/* Iframe — always rendered so audio keeps playing when minimized.
+             No visibility:hidden — that can cause YouTube to pause on some
+             browsers. The mini-bar overlay covers it visually instead. */}
+        <div id="yt-player-container" className="w-full h-full" />
 
         {/* Mini bar shown when minimized */}
         {playerSize === 'min' && (

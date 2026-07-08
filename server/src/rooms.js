@@ -20,6 +20,7 @@ function createRoom(socket, hostName) {
     currentSong: null,
     playing: false,
     repeat: false,
+    queueMode: 'consume', // 'consume' = remove after play | 'cycle' = loop queue
     startedAt: null,
     playedSeconds: 0,
     voteSkips: new Set(),
@@ -97,6 +98,7 @@ function serializeRoom(room) {
     currentSong: room.currentSong,
     playing: room.playing,
     repeat: room.repeat,
+    queueMode: room.queueMode,
     playedSeconds: room.playedSeconds,
     chat: room.chat,
     voteSkips: Array.from(room.voteSkips)

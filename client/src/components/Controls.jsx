@@ -1,6 +1,6 @@
 import { socket } from '../socket.js'
 
-export default function Controls({ playing, currentSong, repeat }) {
+export default function Controls({ playing, currentSong, repeat, queueMode }) {
   if (!currentSong) {
     return (
       <p className="text-gray-500 text-sm">Add a song below to start playing</p>
@@ -38,6 +38,19 @@ export default function Controls({ playing, currentSong, repeat }) {
         }`}
       >
         🔁
+      </button>
+
+      {/* Queue loop toggle */}
+      <button
+        onClick={() => socket.emit('set-queue-mode', { mode: queueMode === 'cycle' ? 'consume' : 'cycle' })}
+        title={queueMode === 'cycle' ? 'Queue loop ON — click to turn off' : 'Queue loop OFF — click to loop queue'}
+        className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors text-base shrink-0 ${
+          queueMode === 'cycle'
+            ? 'bg-indigo-600 text-white'
+            : 'bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white'
+        }`}
+      >
+        🔄
       </button>
 
       {/* Song title — hidden on xs, shown on sm+ */}

@@ -158,7 +158,18 @@ module.exports = function registerHandlers(io, socket) {
     room.repeat = !!repeat;
     io.to(room.code).emit('repeat-changed', { repeat: room.repeat });
   });
-
+  // ── Set Queue Mode (host only) ────────────────────────
+  // mode: 'consume' (default) — remove song after play
+  //       'cycle'            — move song to end of queue (loop forever)
+  socket.on('set-queue-mode', ({ mode } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    if (mode !== 'consume' && mode !== 'cycle') return;
+    room.queueMode = mode;
+    io.to(room.code).emit('queue-mode-changed', { queueMode: room.queueMode });
+  });
   // ── Transfer Host (host only) ────────────────────────────
   socket.on('transfer-host', ({ toUserId } = {}) => {
     const room = getRoomBySocket(socket.id);
@@ -236,6 +247,11 @@ module.exports = function registerHandlers(io, socket) {
 
 // ── Helper ───────────────────────────────────────────────────
 function advanceSong(io, room) {
+  // In cycle mode: push the current (just-finished) song back to end of queue
+  if (room.queueMode === 'cycle' && room.currentSong) {
+    room.queue.push({ ...room.currentSong });
+  }
+
   if (room.queue.length === 0) {
     room.currentSong = null;
     room.playing = false;

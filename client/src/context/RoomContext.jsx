@@ -13,7 +13,8 @@ const initialState = {
   votes: { votes: 0, total: 0, threshold: 0 },
   error: null,
   info: null,
-  repeat: false
+  repeat: false,
+  queueMode: 'consume' // 'consume' | 'cycle'
 }
 
 function reducer(state, action) {
@@ -27,6 +28,7 @@ function reducer(state, action) {
         playing: action.room.playing || false,
         currentTime: action.currentTime || 0,
         repeat: action.room.repeat || false,
+        queueMode: action.room.queueMode || 'consume',
         queue: action.room.queue || [],
         chat: action.room.chat || [],
         votes: { votes: 0, total: 0, threshold: 0 },
@@ -73,6 +75,9 @@ function reducer(state, action) {
 
     case 'SET_REPEAT':
       return { ...state, repeat: action.repeat }
+
+    case 'SET_QUEUE_MODE':
+      return { ...state, queueMode: action.queueMode }
 
     default:
       return state

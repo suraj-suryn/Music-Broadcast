@@ -14,7 +14,7 @@ export default function Room() {
   const { code } = useParams()
   const navigate = useNavigate()
   const { state, dispatch } = useRoom()
-  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat } = state
+  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat, queueMode } = state
   const playerRef = useRef(null)
   const [copied, setCopied] = useState(false)
   // Sidebar: open by default on md+, closed on mobile
@@ -61,6 +61,9 @@ export default function Room() {
       dispatch({ type: 'SET_INFO', message: `👑 ${newHostName} is now the host` })
       setTimeout(() => dispatch({ type: 'CLEAR_INFO' }), 4000)
     }
+    function onQueueModeChanged({ queueMode }) {
+      dispatch({ type: 'SET_QUEUE_MODE', queueMode })
+    }
     function onError({ message }) {
       dispatch({ type: 'SET_ERROR', message })
     }
@@ -76,6 +79,7 @@ export default function Room() {
     socket.on('vote-updated', onVoteUpdated)
     socket.on('repeat-changed', onRepeatChanged)
     socket.on('host-transferred', onHostTransferred)
+    socket.on('queue-mode-changed', onQueueModeChanged)
     socket.on('error', onError)
     socket.on('disconnect', onDisconnect)
 
@@ -88,6 +92,7 @@ export default function Room() {
       socket.off('vote-updated', onVoteUpdated)
       socket.off('repeat-changed', onRepeatChanged)
       socket.off('host-transferred', onHostTransferred)
+      socket.off('queue-mode-changed', onQueueModeChanged)
       socket.off('error', onError)
       socket.off('disconnect', onDisconnect)
     }
@@ -181,8 +186,8 @@ export default function Room() {
           {/* Controls bar */}
           <div className="px-2 sm:px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center gap-3 shrink-0 overflow-x-auto">
             {isHost
-              ? <Controls playing={playing} currentSong={currentSong} repeat={repeat} />
-              : <VoteSkip key={currentSong?.id} votes={votes} currentSong={currentSong} repeat={repeat} />
+              ? <Controls playing={playing} currentSong={currentSong} repeat={repeat} queueMode={queueMode} />
+              : <VoteSkip key={currentSong?.id} votes={votes} currentSong={currentSong} repeat={repeat} queueMode={queueMode} />
             }
           </div>
 
