@@ -4,16 +4,29 @@ A real-time collaborative music room — create a room, share the code, and list
 
 ## Features
 
-- **Room system** — create a room and get a 6-character shareable code; others join instantly
-- **YouTube playback** — paste any YouTube URL to queue it; plays in sync for everyone
-- **File upload** — upload MP3/WAV files (up to 50 MB) and play them in the room
-- **Real-time sync** — all users hear the same song at the same position with latency compensation
-- **Host controls** — the room creator controls play, pause, and skip
-- **Vote to skip** — guests vote to skip the current song; majority triggers auto-skip
-- **Live chat** — real-time chat panel inside the room
-- **User list** — see everyone in the room; host is marked with a crown 👑
-- **Auto host promotion** — if the host leaves, the next user is promoted automatically
-- **Network flexibility** — works on LAN (same Wi-Fi) or over the internet via Cloudflare Tunnel
+### Playback
+- **YouTube playback** — paste any YouTube URL; plays in sync for everyone with latency compensation
+- **File upload** — upload MP3/WAV (up to 50 MB); streamed in sync across all clients
+- **Per-viewer quality** — each viewer picks their own YouTube quality (Auto / 1080p / 720p / 480p / ...)
+- **Song repeat / loop** — host can toggle 🔁 to loop the current song indefinitely
+- **Background playback** — Wake Lock keeps screen on while playing; Media Session API shows controls on the lock screen and notification shade
+
+### Room & Controls
+- **Room system** — 6-character shareable room code; no login required
+- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat 🔁
+- **Vote to skip** — guests vote; majority auto-skips
+- **Host restore** — if the host leaves or reloads, the next user becomes temp host; original host gets control back automatically when they rejoin with the same name
+- **Live chat** — two-way chat; host and all guests can type; unread badge on mobile
+
+### Player UI
+- **Minimize / Restore / Maximize / Fullscreen** — size controls on the video overlay
+- **Responsive layout** — auto-adapts to phone, tablet, and desktop; chat sidebar slides in as overlay on mobile with unread badge
+
+### Network
+- **LAN mode** — share your IP on the same Wi-Fi; zero config
+- **Tunnel mode** — Cloudflare Tunnel for internet access; free, no bandwidth limits, WebSocket-compatible
+- **Auto-tunnel scripts** — `start-tunnel.ps1` (Windows) and `start-tunnel.sh` (Android/Termux) auto-capture the tunnel URL and update config — no manual editing needed
+- **Mobile server** — run the server on an Android phone using Termux
 
 ## Tech Stack
 
@@ -22,7 +35,7 @@ A real-time collaborative music room — create a room, share the code, and list
 | Frontend | React 18 + Vite + Tailwind CSS |
 | Backend | Node.js + Express |
 | Real-time | Socket.io |
-| Music (YouTube) | YouTube IFrame Player API |
+| Music (YouTube) | YouTube IFrame Player API (`youtube-nocookie.com`) |
 | Music (upload) | Multer → HTML5 `<audio>` |
 | State | In-memory (no database) |
 
@@ -41,24 +54,30 @@ cd Music-Broadcast
 npm run install:all
 ```
 
-### Run (development)
+### Run — development (LAN)
 
 ```bash
 npm run dev
 ```
 
-This starts both servers together:
+Starts both servers. The terminal prints your LAN IP — share it with devices on the same Wi-Fi:
 
-| Server | URL |
+| | URL |
 |---|---|
-| Frontend (Vite) | http://localhost:5173 |
-| Backend (Express + Socket.io) | http://localhost:3001 |
+| Your browser | http://localhost:5173 |
+| Other devices (same Wi-Fi) | `http://<LAN-IP>:5173` |
 
-The terminal will also print the LAN URL (e.g. `http://192.168.1.x:5173`) — share that with anyone on the same Wi-Fi.
+### Run — production (serves built client from same port)
+
+```bash
+npm start
+```
+
+Builds the client then starts the Express server on port 3001. Use this with a Cloudflare Tunnel.
 
 ## Network Configuration
 
-All network settings live in one file at the root: **`network.config.json`**
+One file controls everything: **`network.config.json`**
 
 ```json
 {
@@ -68,59 +87,103 @@ All network settings live in one file at the root: **`network.config.json`**
 }
 ```
 
-### Same network (LAN) — default
+### LAN mode (default)
 
 ```json
 { "mode": "lan", "port": 3001, "tunnelUrl": "" }
 ```
 
-Run `npm run dev` — the LAN IP is printed on startup. Share it with friends on the same Wi-Fi. No other changes needed.
+Run `npm run dev`. LAN IP is printed on startup. All devices on the same Wi-Fi use that IP.
 
-### Over the internet (free, no disturbance)
+### Internet mode (Cloudflare Tunnel — free)
 
-Uses [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/) — free, supports WebSockets, no bandwidth limits.
+**Automatic (recommended):**
 
-1. Install `cloudflared` → [download here](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
-2. In a separate terminal:
-   ```bash
-   cloudflared tunnel --url http://localhost:3001
-   ```
-3. Copy the generated URL (e.g. `https://abc-xyz.trycloudflare.com`)
-4. Edit `network.config.json`:
-   ```json
-   { "mode": "tunnel", "port": 3001, "tunnelUrl": "https://abc-xyz.trycloudflare.com" }
-   ```
-5. Run `npm run dev` — share the Vite URL with anyone anywhere
+```bash
+# Windows
+powershell -ExecutionPolicy Bypass -File start-tunnel.ps1
+
+# Android / Linux / macOS
+chmod +x start-tunnel.sh && ./start-tunnel.sh
+```
+
+The script starts cloudflared, captures the generated URL, updates `network.config.json` automatically, and runs `npm start`. No manual editing.
+
+**Manual:**
+
+```bash
+cloudflared tunnel --url http://localhost:3001
+# copy the URL it prints, e.g. https://abc-xyz.trycloudflare.com
+```
+
+Then update `network.config.json`:
+```json
+{ "mode": "tunnel", "port": 3001, "tunnelUrl": "https://abc-xyz.trycloudflare.com" }
+```
+
+Run `npm start` — share the tunnel URL with anyone on the internet.
 
 ## How to Use
 
-1. Open http://localhost:5173 in your browser
-2. Enter a display name and click **Create Room**
-3. The 6-character room code appears in the top bar — share it
-4. Friends go to the same URL, enter a name, click **Join Room**, type the code
-5. As host: paste a YouTube URL or upload an audio file, then hit ▶ to play
-6. Guests can chat and vote to skip songs
+1. Open the app in a browser
+2. Enter a display name → **Create Room** to get a 6-character code
+3. Share the code with friends → they click **Join Room** → enter the code
+4. **Host:** paste a YouTube URL or upload an audio file → press ▶ to play
+5. **Guests:** vote to skip, chat, watch in the quality of their choice
+
+### Embeddable YouTube videos
+
+Some videos block embedding. These always work:
+- `https://youtu.be/dQw4w9WgXcQ` — Rick Astley
+- `https://youtu.be/jfKfPfyJRdk` — Lofi Girl
+- `https://youtu.be/L_jWHffIx5E` — Smash Mouth
+- Uploaded MP3/WAV files always work with no restrictions
+
+## Running on Android (Termux)
+
+```bash
+# Install Termux from F-Droid (not Play Store)
+pkg update && pkg upgrade
+pkg install nodejs git
+
+git clone https://github.com/suraj-suryn/Music-Broadcast.git
+cd Music-Broadcast
+npm run install:all
+
+# Optional: install cloudflared for internet access
+pkg install cloudflared
+
+# Start with auto-tunnel
+chmod +x start-tunnel.sh && ./start-tunnel.sh
+
+# Or LAN-only
+npm run dev
+```
+
+Use `tmux` to run cloudflared and the server side-by-side: `pkg install tmux`.
 
 ## Project Structure
 
 ```
 Music-Broadcast/
 ├── network.config.json        # ← switch LAN / tunnel here
-├── package.json               # root: concurrently dev script
+├── start-tunnel.ps1           # Windows: auto-tunnel + start
+├── start-tunnel.sh            # Android/Linux/macOS: auto-tunnel + start
+├── package.json               # root scripts
 ├── client/                    # React + Vite frontend
-│   ├── vite.config.js         # reads network.config.json, injects server URL
+│   ├── vite.config.js         # reads network.config.json
 │   └── src/
-│       ├── pages/             # Home.jsx, Room.jsx
+│       ├── pages/             # Home.jsx, Room.jsx (responsive layout)
 │       ├── components/        # MusicPlayer, Controls, Queue, AddSong,
-│       │                      #   Chat, UserList, VoteSkip
-│       ├── context/           # RoomContext.jsx (shared state)
-│       └── socket.js          # Socket.io client singleton
+│       │                      # Chat, UserList, VoteSkip
+│       ├── context/           # RoomContext.jsx
+│       └── socket.js          # Socket.io client
 └── server/                    # Node.js backend
-    ├── server.js              # Express + Socket.io entry point
+    ├── server.js              # Express + Socket.io
     └── src/
         ├── rooms.js           # In-memory room store
-        ├── socketHandlers.js  # All socket event logic
-        └── routes/upload.js   # Multer audio upload endpoint
+        ├── socketHandlers.js  # All socket events
+        └── routes/upload.js   # Multer audio upload
 ```
 
 ## Scripts
@@ -128,6 +191,21 @@ Music-Broadcast/
 | Command | Description |
 |---|---|
 | `npm run install:all` | Install all dependencies (root + server + client) |
-| `npm run dev` | Start both server and client in development mode |
+| `npm run dev` | Start both server and Vite dev server (LAN mode) |
 | `npm run build` | Build the client for production |
-| `npm run start` | Run the production server |
+| `npm start` | Build client + start production server |
+| `npm run start:dev` | Start server only (skip rebuild) |
+| `./start-tunnel.ps1` | Windows: auto-tunnel, update config, start |
+| `./start-tunnel.sh` | Android/Linux: auto-tunnel, update config, start |
+
+## Version History
+
+| Tag | Changes |
+|---|---|
+| v7 | Responsive layout — mobile sidebar overlay, chat unread badge |
+| v6 | Background playback (Wake Lock + Media Session), song repeat 🔁 |
+| v5 | Per-viewer YouTube quality selector |
+| v4 | Video size controls (min/normal/max/fullscreen) |
+| v3 | Host restore on rejoin |
+| v2 | Startup config fix, YouTube embed error handling |
+| v1 | Initial release |
