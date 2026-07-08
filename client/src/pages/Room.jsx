@@ -17,6 +17,8 @@ export default function Room() {
   const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat, queueMode } = state
   const playerRef = useRef(null)
   const [copied, setCopied] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [showQR, setShowQR] = useState(false)
   // Sidebar: open by default on md+, closed on mobile
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768)
   const [unread, setUnread] = useState(0)
@@ -119,6 +121,17 @@ export default function Room() {
     })
   }
 
+  function getInviteUrl() {
+    return `${window.location.origin}/?join=${code}`
+  }
+
+  function copyInviteLink() {
+    navigator.clipboard.writeText(getInviteUrl()).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    })
+  }
+
   if (!room || !user) return null
 
   const isHost = user.isHost
@@ -143,8 +156,27 @@ export default function Room() {
           className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-3 py-1.5 transition-colors"
         >
           <span className="font-mono font-bold tracking-[0.2em] text-sm text-white">{code}</span>
-          <span className="text-gray-400 text-xs">{copied ? '✓ copied' : 'copy'}</span>
+          <span className="text-gray-400 text-xs">{copied ? '\u2713 copied' : 'copy'}</span>
         </button>
+
+        {/* Invite: share link + QR */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={copyInviteLink}
+            title="Copy invite link"
+            className="flex items-center gap-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-2 py-1.5 text-xs transition-colors"
+          >
+            <span>\uD83D\uDD17</span>
+            <span className="hidden sm:inline text-gray-300">{linkCopied ? '\u2713 Copied!' : 'Invite'}</span>
+          </button>
+          <button
+            onClick={() => setShowQR(true)}
+            title="Show QR code"
+            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm transition-colors"
+          >
+            \uD83D\uDCF1
+          </button>
+        </div>
 
         <div className="flex items-center gap-2 text-sm text-gray-400 shrink-0">
           <span>👥 {room.users?.length ?? 0}</span>
@@ -246,6 +278,44 @@ export default function Room() {
       {state.info && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-xl text-sm z-50 text-center">
           {state.info}
+        </div>
+      )}
+
+      {/* QR Code modal */}
+      {showQR && (
+        <div
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowQR(false)}
+        >
+          <div
+            className="bg-gray-900 rounded-2xl p-6 flex flex-col items-center gap-4 border border-gray-700 max-w-xs w-full"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-white font-bold text-lg">Join Room {code}</h3>
+            <p className="text-gray-400 text-sm text-center">Scan with phone camera to join</p>
+            <div className="bg-white rounded-xl p-2">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(getInviteUrl())}`}
+                alt="QR code"
+                className="w-48 h-48 rounded"
+              />
+            </div>
+            <p className="text-gray-500 text-xs text-center break-all">{getInviteUrl()}</p>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={copyInviteLink}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {linkCopied ? '✓ Copied!' : '🔗 Copy Link'}
+              </button>
+              <button
+                onClick={() => setShowQR(false)}
+                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

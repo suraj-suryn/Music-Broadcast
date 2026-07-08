@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { socket } from '../socket.js'
 import { useRoom } from '../context/RoomContext.jsx'
@@ -11,6 +11,16 @@ export default function Home() {
   const [error, setError] = useState('')
   const { dispatch } = useRoom()
   const navigate = useNavigate()
+
+  // Pre-fill code from invite link: /?join=ABC123
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const joinCode = params.get('join')
+    if (joinCode) {
+      setCode(joinCode.toUpperCase())
+      setMode('join')
+    }
+  }, [])
 
   function handleSubmit(e) {
     e.preventDefault()
