@@ -40,8 +40,8 @@ export default function Controls({ playing, currentSong, repeat }) {
         🔁
       </button>
 
-      {/* Song title */}
-      <span className="text-gray-300 text-sm truncate min-w-0">{currentSong.title}</span>
+      {/* Song title — hidden on xs, shown on sm+ */}
+      <span className="text-gray-300 text-sm truncate min-w-0 hidden sm:inline">{currentSong.title}</span>
     </div>
   )
 }

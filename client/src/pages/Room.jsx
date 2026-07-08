@@ -17,6 +17,10 @@ export default function Room() {
   const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat } = state
   const playerRef = useRef(null)
   const [copied, setCopied] = useState(false)
+  // Sidebar: open by default on md+, closed on mobile
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768)
+  const [unread, setUnread] = useState(0)
+  const prevChatLen = useRef(0)
 
   useEffect(() => {
     // Redirect if no room state (e.g. page refresh)
@@ -88,6 +92,14 @@ export default function Room() {
     return () => { document.title = 'Music Room' }
   }, [code])
 
+  // Track unread messages when sidebar is closed
+  useEffect(() => {
+    if (chat.length > prevChatLen.current && !sidebarOpen) {
+      setUnread(n => n + (chat.length - prevChatLen.current))
+    }
+    prevChatLen.current = chat.length
+  }, [chat.length, sidebarOpen])
+
   function copyCode() {
     navigator.clipboard.writeText(code).then(() => {
       setCopied(true)
@@ -126,11 +138,24 @@ export default function Room() {
               Host
             </span>
           )}
+          {/* Chat toggle — mobile only */}
+          <button
+            onClick={() => { setSidebarOpen(o => !o); setUnread(0) }}
+            className="md:hidden relative w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+            title="Toggle chat & users"
+          >
+            <span className="text-base">💬</span>
+            {unread > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full font-bold leading-none">
+                {unread > 9 ? '9+' : unread}
+              </span>
+            )}
+          </button>
         </div>
       </header>
 
       {/* ── Body ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
 
         {/* Left/Main: player + controls + queue */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
@@ -158,8 +183,32 @@ export default function Room() {
           </div>
         </div>
 
-        {/* Right sidebar: users + chat */}
-        <div className="w-64 flex flex-col border-l border-gray-800 shrink-0 overflow-hidden">
+        {/* Backdrop — mobile only, closes sidebar on tap */}
+        {sidebarOpen && (
+          <div
+            className="md:hidden absolute inset-0 bg-black/60 z-30"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Right sidebar: users + chat
+            Mobile  → fixed overlay sliding from right (z-40)
+            Tablet+ → always-visible column                  */}
+        <div className={`
+          flex flex-col border-l border-gray-800 overflow-hidden bg-gray-950
+          transition-transform duration-200 md:transition-none
+          absolute inset-y-0 right-0 z-40 w-72
+          md:relative md:w-64 md:translate-x-0 md:z-auto md:shrink-0
+          ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+        `}>
+          {/* Close button — mobile only */}
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden absolute top-2 right-2 z-50 text-gray-500 hover:text-white text-sm w-6 h-6 flex items-center justify-center"
+            title="Close"
+          >
+            ✕
+          </button>
           <UserList users={room.users} />
           <Chat chat={chat} user={user} />
         </div>
