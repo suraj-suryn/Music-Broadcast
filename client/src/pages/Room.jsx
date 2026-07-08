@@ -112,10 +112,13 @@ export default function Room() {
   const isHost = user.isHost
 
   return (
-    <div className="h-screen bg-gray-950 text-white flex flex-col overflow-hidden">
+    <div
+      className="h-screen bg-gray-950 text-white flex flex-col overflow-hidden"
+      style={{ height: '100dvh' }}
+    >
 
       {/* ── Header ── */}
-      <header className="flex items-center justify-between px-4 py-2.5 bg-gray-900 border-b border-gray-800 shrink-0 gap-3">
+      <header className="flex items-center justify-between px-2 sm:px-4 py-2 sm:py-2.5 bg-gray-900 border-b border-gray-800 shrink-0 gap-2 sm:gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-xl">🎵</span>
           <span className="font-bold text-base hidden sm:block">Music Room</span>
@@ -169,7 +172,7 @@ export default function Room() {
           />
 
           {/* Controls bar */}
-          <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center gap-3 shrink-0">
+          <div className="px-2 sm:px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center gap-3 shrink-0 overflow-x-auto">
             {isHost
               ? <Controls playing={playing} currentSong={currentSong} repeat={repeat} />
               : <VoteSkip key={currentSong?.id} votes={votes} currentSong={currentSong} repeat={repeat} />
@@ -177,7 +180,7 @@ export default function Room() {
           </div>
 
           {/* Scrollable area: AddSong (host) + Queue */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
             {isHost && <AddSong />}
             <Queue queue={queue} isHost={isHost} />
           </div>

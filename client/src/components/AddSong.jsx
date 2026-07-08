@@ -82,7 +82,7 @@ export default function AddSong() {
       <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Song</h3>
 
       {/* YouTube URL */}
-      <form onSubmit={handleAddYT} className="flex gap-2 mb-3">
+      <form onSubmit={handleAddYT} className="flex flex-col sm:flex-row gap-2 mb-3">
         <input
           type="text"
           placeholder="e.g. https://youtu.be/dQw4w9WgXcQ"
@@ -93,7 +93,7 @@ export default function AddSong() {
         <button
           type="submit"
           disabled={ytLoading}
-          className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+          className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto sm:shrink-0"
         >
           {ytLoading ? '…' : '▶ Add'}
         </button>

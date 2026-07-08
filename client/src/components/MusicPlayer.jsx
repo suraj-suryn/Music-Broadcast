@@ -10,8 +10,13 @@ const YT_ERROR_MSG = {
   150: 'This video cannot be embedded (owner restriction).'
 }
 
-// Player height presets (px)
-const HEIGHTS = { min: 52, normal: 220, max: 420 }
+// Player height presets (px) -- adapts to viewport width
+function getHeights() {
+  const w = typeof window !== 'undefined' ? window.innerWidth : 1024
+  if (w < 480) return { min: 52, normal: 155, max: 240 }
+  if (w < 768) return { min: 52, normal: 185, max: 300 }
+  return { min: 52, normal: 220, max: 420 }
+}
 
 // Human-readable quality labels
 const QUALITY_LABELS = {
@@ -36,6 +41,7 @@ function CtrlBtn({ onClick, title, children, active }) {
 }
 
 const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, currentTime }, ref) {
+  const HEIGHTS = getHeights()
   const ytPlayerRef = useRef(null)
   const audioRef = useRef(null)
   const containerRef = useRef(null)
@@ -247,7 +253,7 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
   if (!currentSong) {
     return (
       <div className="flex flex-col items-center justify-center bg-gray-900 text-gray-500 shrink-0"
-           style={{ height: 200 }}>
+           style={{ height: HEIGHTS.normal }}>
         <div className="text-5xl mb-3">🎵</div>
         <p className="text-sm">No song playing</p>
       </div>

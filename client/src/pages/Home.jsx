@@ -59,14 +59,14 @@ export default function Home() {
       <div className="w-full max-w-md">
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="text-6xl mb-4">🎵</div>
-          <h1 className="text-4xl font-bold text-white tracking-tight">Music Room</h1>
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="text-5xl sm:text-6xl mb-3 sm:mb-4">🎵</div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">Music Room</h1>
           <p className="text-gray-400 mt-2">Listen together, in sync</p>
         </div>
 
         {/* Card */}
-        <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-800">
+        <div className="bg-gray-900 rounded-2xl p-5 sm:p-8 shadow-2xl border border-gray-800">
 
           {/* Mode toggle */}
           <div className="flex rounded-xl bg-gray-800 p-1 mb-6">
@@ -75,7 +75,7 @@ export default function Home() {
                 key={m}
                 type="button"
                 onClick={() => switchMode(m)}
-                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all capitalize ${
+                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors capitalize ${
                   mode === m
                     ? 'bg-indigo-600 text-white shadow'
                     : 'text-gray-400 hover:text-white'
