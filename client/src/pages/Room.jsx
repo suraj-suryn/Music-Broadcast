@@ -153,35 +153,38 @@ export default function Room() {
         <button
           onClick={copyCode}
           title="Click to copy room code"
-          className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-3 py-1.5 transition-colors"
+          className="flex items-center gap-1.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-2 sm:px-3 py-1.5 transition-colors shrink-0"
         >
-          <span className="font-mono font-bold tracking-[0.2em] text-sm text-white">{code}</span>
-          <span className="text-gray-400 text-xs">{copied ? '\u2713 copied' : 'copy'}</span>
+          <span className="font-mono font-bold tracking-[0.15em] sm:tracking-[0.2em] text-xs sm:text-sm text-white">{code}</span>
+          <span className="text-gray-400 text-xs hidden sm:inline">{copied ? '✓' : 'copy'}</span>
         </button>
 
-        {/* Invite: share link + QR */}
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 text-sm text-gray-400 shrink-0">
+          {/* Invite: share link */}
           <button
             onClick={copyInviteLink}
-            title="Copy invite link"
-            className="flex items-center gap-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg px-2 py-1.5 text-xs transition-colors"
+            title={linkCopied ? 'Link copied!' : 'Copy invite link'}
+            className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors text-base ${
+              linkCopied
+                ? 'bg-green-700/30 border-green-600 text-green-400'
+                : 'bg-gray-800 hover:bg-gray-700 border-gray-700'
+            }`}
           >
-            <span>\uD83D\uDD17</span>
-            <span className="hidden sm:inline text-gray-300">{linkCopied ? '\u2713 Copied!' : 'Invite'}</span>
+            {linkCopied ? '✓' : '🔗'}
           </button>
+          {/* QR code */}
           <button
             onClick={() => setShowQR(true)}
             title="Show QR code"
-            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-sm transition-colors"
+            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-base transition-colors"
           >
-            \uD83D\uDCF1
+            📱
           </button>
-        </div>
 
-        <div className="flex items-center gap-2 text-sm text-gray-400 shrink-0">
-          <span>👥 {room.users?.length ?? 0}</span>
+          <span className="hidden sm:inline">👥 {room.users?.length ?? 0}</span>
+          <span className="sm:hidden text-xs">{room.users?.length ?? 0}</span>
           {isHost && (
-            <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-0.5 rounded-full font-medium">
+            <span className="bg-yellow-500/20 text-yellow-400 text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium">
               Host
             </span>
           )}
