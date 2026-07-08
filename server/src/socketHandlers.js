@@ -159,6 +159,28 @@ module.exports = function registerHandlers(io, socket) {
     io.to(room.code).emit('repeat-changed', { repeat: room.repeat });
   });
 
+  // ── Transfer Host (host only) ────────────────────────────
+  socket.on('transfer-host', ({ toUserId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const from = room.users.find(u => u.id === socket.id);
+    if (!from?.isHost) return;
+    const to = room.users.find(u => u.id === toUserId);
+    if (!to || to.isHost) return;
+
+    from.isHost = false;
+    to.isHost   = true;
+    // New host now owns rejoin restoration too
+    room.originalHostName = to.name;
+    room.voteSkips.clear();
+
+    io.to(room.code).emit('host-transferred', {
+      users:        room.users,
+      newHostName:  to.name,
+      prevHostName: from.name
+    });
+  });
+
   // ── Vote to Skip (guests only) ──────────────────────────
   socket.on('vote-skip', () => {
     const room = getRoomBySocket(socket.id);

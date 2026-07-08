@@ -56,6 +56,11 @@ export default function Room() {
     function onRepeatChanged({ repeat }) {
       dispatch({ type: 'SET_REPEAT', repeat })
     }
+    function onHostTransferred({ users, newHostName }) {
+      dispatch({ type: 'USERS_UPDATED', users })
+      dispatch({ type: 'SET_INFO', message: `👑 ${newHostName} is now the host` })
+      setTimeout(() => dispatch({ type: 'CLEAR_INFO' }), 4000)
+    }
     function onError({ message }) {
       dispatch({ type: 'SET_ERROR', message })
     }
@@ -70,6 +75,7 @@ export default function Room() {
     socket.on('user-left', onUserLeft)
     socket.on('vote-updated', onVoteUpdated)
     socket.on('repeat-changed', onRepeatChanged)
+    socket.on('host-transferred', onHostTransferred)
     socket.on('error', onError)
     socket.on('disconnect', onDisconnect)
 
@@ -81,6 +87,7 @@ export default function Room() {
       socket.off('user-left', onUserLeft)
       socket.off('vote-updated', onVoteUpdated)
       socket.off('repeat-changed', onRepeatChanged)
+      socket.off('host-transferred', onHostTransferred)
       socket.off('error', onError)
       socket.off('disconnect', onDisconnect)
     }
@@ -212,7 +219,7 @@ export default function Room() {
           >
             ✕
           </button>
-          <UserList users={room.users} />
+          <UserList users={room.users} currentUser={user} />
           <Chat chat={chat} user={user} />
         </div>
       </div>
