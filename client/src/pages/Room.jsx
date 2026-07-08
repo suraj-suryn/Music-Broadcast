@@ -14,7 +14,7 @@ export default function Room() {
   const { code } = useParams()
   const navigate = useNavigate()
   const { state, dispatch } = useRoom()
-  const { room, user, currentSong, playing, currentTime, queue, chat, votes } = state
+  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat } = state
   const playerRef = useRef(null)
   const [copied, setCopied] = useState(false)
 
@@ -49,6 +49,9 @@ export default function Room() {
     function onVoteUpdated(payload) {
       dispatch({ type: 'VOTE_UPDATED', payload })
     }
+    function onRepeatChanged({ repeat }) {
+      dispatch({ type: 'SET_REPEAT', repeat })
+    }
     function onError({ message }) {
       dispatch({ type: 'SET_ERROR', message })
     }
@@ -62,6 +65,7 @@ export default function Room() {
     socket.on('user-joined', onUserJoined)
     socket.on('user-left', onUserLeft)
     socket.on('vote-updated', onVoteUpdated)
+    socket.on('repeat-changed', onRepeatChanged)
     socket.on('error', onError)
     socket.on('disconnect', onDisconnect)
 
@@ -72,6 +76,7 @@ export default function Room() {
       socket.off('user-joined', onUserJoined)
       socket.off('user-left', onUserLeft)
       socket.off('vote-updated', onVoteUpdated)
+      socket.off('repeat-changed', onRepeatChanged)
       socket.off('error', onError)
       socket.off('disconnect', onDisconnect)
     }
@@ -141,8 +146,8 @@ export default function Room() {
           {/* Controls bar */}
           <div className="px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center gap-3 shrink-0">
             {isHost
-              ? <Controls playing={playing} currentSong={currentSong} />
-              : <VoteSkip key={currentSong?.id} votes={votes} currentSong={currentSong} />
+              ? <Controls playing={playing} currentSong={currentSong} repeat={repeat} />
+              : <VoteSkip key={currentSong?.id} votes={votes} currentSong={currentSong} repeat={repeat} />
             }
           </div>
 

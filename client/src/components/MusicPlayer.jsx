@@ -81,6 +81,44 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
     }
   }
 
+  // ── Wake Lock: keep screen on while playing ──────────────
+  useEffect(() => {
+    let wakeLock = null
+    async function acquire() {
+      if (!('wakeLock' in navigator)) return
+      try { wakeLock = await navigator.wakeLock.request('screen') } catch {}
+    }
+    function release() {
+      if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null }
+    }
+    // Re-acquire when tab becomes visible again (released on hide)
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible' && playing && currentSong) acquire()
+    }
+    if (playing && currentSong) acquire()
+    else release()
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => { release(); document.removeEventListener('visibilitychange', onVisibilityChange) }
+  }, [playing, currentSong])
+
+  // ── Media Session: show media controls on lock screen ────
+  // (most useful for uploaded audio; YouTube iframes handle this internally)
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentSong) return
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentSong.title,
+      artist: 'Music Room'
+    })
+    navigator.mediaSession.setActionHandler('nexttrack', () => socket.emit('song-ended'))
+    return () => { navigator.mediaSession.metadata = null }
+  }, [currentSong?.id])
+
+  // Sync Media Session playback state
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return
+    navigator.mediaSession.playbackState = playing ? 'playing' : 'paused'
+  }, [playing])
+
   // Load YouTube IFrame API once
   useEffect(() => {
     if (window.YT?.Player) { setYtReady(true); return }

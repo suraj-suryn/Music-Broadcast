@@ -132,7 +132,31 @@ module.exports = function registerHandlers(io, socket) {
   socket.on('song-ended', () => {
     const room = getRoomBySocket(socket.id);
     if (!room || !room.playing) return;
-    advanceSong(io, room);
+
+    if (room.repeat && room.currentSong) {
+      // Loop: restart the same song for everyone
+      room.playedSeconds = 0;
+      room.startedAt = Date.now();
+      room.voteSkips.clear();
+      io.to(room.code).emit('playback-sync', {
+        playing: true,
+        currentTime: 0,
+        timestamp: room.startedAt,
+        song: room.currentSong
+      });
+    } else {
+      advanceSong(io, room);
+    }
+  });
+
+  // ── Set Repeat (host only) ───────────────────────────────
+  socket.on('set-repeat', ({ repeat } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    room.repeat = !!repeat;
+    io.to(room.code).emit('repeat-changed', { repeat: room.repeat });
   });
 
   // ── Vote to Skip (guests only) ──────────────────────────

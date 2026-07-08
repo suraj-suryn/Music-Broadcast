@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { socket } from '../socket.js'
 
-export default function VoteSkip({ votes, currentSong }) {
+export default function VoteSkip({ votes, currentSong, repeat }) {
   const [voted, setVoted] = useState(false)
 
   // Reset voted state when song changes (component is keyed by song id in Room.jsx)
@@ -32,6 +32,10 @@ export default function VoteSkip({ votes, currentSong }) {
         <span className="text-gray-400 text-sm">
           {count}/{total} voted · {threshold} needed
         </span>
+      )}
+
+      {repeat && (
+        <span className="text-indigo-400 text-sm" title="Host has repeat on">🔁</span>
       )}
 
       <span className="text-gray-600 text-sm truncate min-w-0 hidden sm:block">

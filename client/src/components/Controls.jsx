@@ -1,6 +1,6 @@
 import { socket } from '../socket.js'
 
-export default function Controls({ playing, currentSong }) {
+export default function Controls({ playing, currentSong, repeat }) {
   if (!currentSong) {
     return (
       <p className="text-gray-500 text-sm">Add a song below to start playing</p>
@@ -25,6 +25,19 @@ export default function Controls({ playing, currentSong }) {
         title="Skip to next song"
       >
         ⏭
+      </button>
+
+      {/* Repeat toggle */}
+      <button
+        onClick={() => socket.emit('set-repeat', { repeat: !repeat })}
+        title={repeat ? 'Repeat ON — click to turn off' : 'Repeat OFF — click to loop this song'}
+        className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors text-base shrink-0 ${
+          repeat
+            ? 'bg-indigo-600 text-white'
+            : 'bg-gray-700 hover:bg-gray-600 text-gray-400 hover:text-white'
+        }`}
+      >
+        🔁
       </button>
 
       {/* Song title */}

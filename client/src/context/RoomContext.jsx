@@ -12,7 +12,8 @@ const initialState = {
   chat: [],
   votes: { votes: 0, total: 0, threshold: 0 },
   error: null,
-  info: null
+  info: null,
+  repeat: false
 }
 
 function reducer(state, action) {
@@ -25,6 +26,7 @@ function reducer(state, action) {
         currentSong: action.room.currentSong || null,
         playing: action.room.playing || false,
         currentTime: action.currentTime || 0,
+        repeat: action.room.repeat || false,
         queue: action.room.queue || [],
         chat: action.room.chat || [],
         votes: { votes: 0, total: 0, threshold: 0 },
@@ -68,6 +70,9 @@ function reducer(state, action) {
 
     case 'CLEAR_INFO':
       return { ...state, info: null }
+
+    case 'SET_REPEAT':
+      return { ...state, repeat: action.repeat }
 
     default:
       return state
