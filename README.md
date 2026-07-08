@@ -9,14 +9,21 @@ A real-time collaborative music room — create a room, share the code, and list
 - **File upload** — upload MP3/WAV (up to 50 MB); streamed in sync across all clients
 - **Per-viewer quality** — each viewer picks their own YouTube quality (Auto / 1080p / 720p / 480p / ...)
 - **Song repeat / loop** — host can toggle 🔁 to loop the current song indefinitely
-- **Background playback** — Wake Lock keeps screen on while playing; Media Session API shows controls on the lock screen and notification shade
+- **Queue loop** — host can toggle 🔄 to cycle played songs back to the end of the queue (plays forever)
+- **Background playback** — Wake Lock keeps screen on; Media Session shows controls on lock screen; silent audio keepalive survives tab switch and screen lock
 
 ### Room & Controls
 - **Room system** — 6-character shareable room code; no login required
-- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat 🔁
+- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat 🔁 / queue loop 🔄
+- **Manual host transfer** — host can tap 👑 next to any user to hand over control
 - **Vote to skip** — guests vote; majority auto-skips
 - **Host restore** — if the host leaves or reloads, the next user becomes temp host; original host gets control back automatically when they rejoin with the same name
 - **Live chat** — two-way chat; host and all guests can type; unread badge on mobile
+
+### Invite
+- **Invite link** — one-tap copy of a full join URL (`?join=ROOMCODE`)
+- **QR code** — tap 📱 to show a scannable QR code; anyone scans with phone camera to join instantly
+- **Auto-fill** — opening an invite link pre-fills the room code and switches to Join mode
 
 ### Player UI
 - **Minimize / Restore / Maximize / Fullscreen** — size controls on the video overlay
@@ -26,6 +33,7 @@ A real-time collaborative music room — create a room, share the code, and list
 - **LAN mode** — share your IP on the same Wi-Fi; zero config
 - **Tunnel mode** — Cloudflare Tunnel for internet access; free, no bandwidth limits, WebSocket-compatible
 - **Auto-tunnel scripts** — `start-tunnel.ps1` (Windows) and `start-tunnel.sh` (Android/Termux) auto-capture the tunnel URL and update config — no manual editing needed
+- **Restart scripts** — `restart-server.ps1/.sh` restart only the server when code changes; tunnel keeps running uninterrupted
 - **Mobile server** — run the server on an Android phone using Termux
 
 ## Tech Stack
@@ -130,6 +138,7 @@ Run `npm start` — share the tunnel URL with anyone on the internet.
 3. Share the code with friends → they click **Join Room** → enter the code
 4. **Host:** paste a YouTube URL or upload an audio file → press ▶ to play
 5. **Guests:** vote to skip, chat, watch in the quality of their choice
+6. **Invite others:** tap 🔗 to copy an invite link or 📱 for a QR code — opening the link auto-fills the room code
 
 ### Embeddable YouTube videos
 
@@ -169,13 +178,15 @@ Music-Broadcast/
 ├── network.config.json        # ← switch LAN / tunnel here
 ├── start-tunnel.ps1           # Windows: auto-tunnel + start
 ├── start-tunnel.sh            # Android/Linux/macOS: auto-tunnel + start
+├── restart-server.ps1         # Windows: restart server only (tunnel keeps running)
+├── restart-server.sh          # Android/Linux: restart server only
 ├── package.json               # root scripts
 ├── client/                    # React + Vite frontend
 │   ├── vite.config.js         # reads network.config.json
 │   └── src/
-│       ├── pages/             # Home.jsx, Room.jsx (responsive layout)
+│       ├── pages/             # Home.jsx (invite link support), Room.jsx
 │       ├── components/        # MusicPlayer, Controls, Queue, AddSong,
-│       │                      # Chat, UserList, VoteSkip
+│       │                      # Chat, UserList (host transfer), VoteSkip
 │       ├── context/           # RoomContext.jsx
 │       └── socket.js          # Socket.io client
 └── server/                    # Node.js backend
@@ -197,11 +208,14 @@ Music-Broadcast/
 | `npm run start:dev` | Start server only (skip rebuild) |
 | `./start-tunnel.ps1` | Windows: auto-tunnel, update config, start |
 | `./start-tunnel.sh` | Android/Linux: auto-tunnel, update config, start |
+| `./restart-server.ps1` | Windows: restart server only (tunnel keeps running) |
+| `./restart-server.sh` | Android/Linux: restart server only |
 
 ## Version History
 
 | Tag | Changes |
 |---|---|
+| v8+ | Queue loop 🔄, manual host transfer, invite link + QR code, background playback fixes |
 | v7 | Responsive layout — mobile sidebar overlay, chat unread badge |
 | v6 | Background playback (Wake Lock + Media Session), song repeat 🔁 |
 | v5 | Per-viewer YouTube quality selector |
