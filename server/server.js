@@ -34,6 +34,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 // ── Routes ───────────────────────────────────────────────────
 app.use('/api/upload', require('./src/routes/upload'));
+app.use('/api/search', require('./src/routes/search'));
 
 // ── Serve built client (tunnel / production mode) ────────────
 // In tunnel mode the Vite dev server is not exposed, so we serve
