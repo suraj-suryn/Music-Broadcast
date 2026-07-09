@@ -414,6 +414,21 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
         <div className="flex flex-col items-center justify-center h-full gap-3 px-4">
           <div className="text-5xl">🎵</div>
           <p className="text-white font-semibold text-center truncate max-w-xs">{currentSong.title}</p>
+          {/* Volume slider — per-client, local only */}
+          <div className="flex items-center gap-2 w-full max-w-xs">
+            <span className="text-gray-400 text-sm">🔈</span>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              defaultValue="1"
+              onChange={e => { if (audioRef.current) audioRef.current.volume = e.target.value }}
+              className="flex-1 h-1.5 accent-indigo-500 cursor-pointer"
+              title="Volume (your device only)"
+            />
+            <span className="text-gray-400 text-sm">🔊</span>
+          </div>
         </div>
       )}
 

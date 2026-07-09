@@ -206,6 +206,20 @@ module.exports = function registerHandlers(io, socket) {
     io.to(room.code).emit('queue-updated', { queue: room.queue });
   });
 
+  // ── Rename Self ──────────────────────────────────────────
+  socket.on('rename-user', ({ name } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user) return;
+    const trimmed = (name || '').trim().slice(0, 30);
+    if (!trimmed) return socket.emit('error', { message: 'Name cannot be empty' });
+    user.name = trimmed;
+    // Update originalHostName if host renames themselves
+    if (user.isHost) room.originalHostName = trimmed;
+    io.to(room.code).emit('user-joined', { users: room.users, hostRestored: false });
+  });
+
   // ── Kick User (host only) ────────────────────────────────
   socket.on('kick-user', ({ userId } = {}) => {
     const room = getRoomBySocket(socket.id);

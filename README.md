@@ -241,6 +241,7 @@ Music-Broadcast/
 
 | Version | Changes |
 |---|---|
+| **v9.1** | Song duplicate warning (⚠️ blocks re-adding same song), volume slider for uploaded audio, username rename mid-session (✏️), LAN/Public network toggle for invite links |
 | **v9** | Guest song suggestions (💡 approve/reject), seek/progress bar, queue reorder ▲▼, repeat cycle (Off→All→One), keyboard shortcuts, auto-reconnect overlay, now-playing toast, invite link safety (locked join mode), host kick user 🚫, direct audio URL link, playlist export 💾 + import 📋, song play history, chat sidebar closed by default, Vite dev proxy for YouTube search API |
 | v8 | YouTube search, queue loop 🔄, manual host transfer 👑, invite link + QR code, background playback fixes (persistent keepalive, Media Session play/pause, visibility re-sync) |
 | v7 | Responsive layout — mobile sidebar overlay, chat unread badge |

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { socket } from '../socket.js'
+import { useRoom } from '../context/RoomContext.jsx'
 
 const YT_REGEX = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/
 
@@ -27,6 +28,14 @@ function suggestSong(song) {
 export default function AddSong({ isHost = true }) {
   // isHost=true  → songs go directly to queue
   // isHost=false → songs become suggestions for host to approve
+  const { state: { queue, currentSong } } = useRoom()
+
+  // Check if a song is already playing or queued
+  function isDuplicate(song) {
+    const all = [...queue, ...(currentSong ? [currentSong] : [])]
+    if (song.videoId) return all.some(s => s.videoId === song.videoId)
+    return all.some(s => s.url === song.url)
+  }
 
   const [tab, setTab] = useState('search') // 'search' | 'url' | 'upload' | 'import'
   const [ytUrl, setYtUrl] = useState('')
@@ -35,6 +44,7 @@ export default function AddSong({ isHost = true }) {
   const [uploadLoading, setUploadLoading] = useState(false)
   const [error, setError] = useState('')
   const [suggested, setSuggested] = useState('') // brief "✓ Suggested!" feedback for guests
+  const [dupWarning, setDupWarning] = useState('') // duplicate song warning
   // Search state
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
@@ -48,6 +58,11 @@ export default function AddSong({ isHost = true }) {
 
   // Route song to queue (host) or suggestion (guest)
   function submitSong(song) {
+    if (isHost && isDuplicate(song)) {
+      setDupWarning(`⚠️ "${song.title}" is already in the queue or playing`)
+      setTimeout(() => setDupWarning(''), 3500)
+      return
+    }
     if (isHost) addToQueue(song)
     else {
       suggestSong(song)
@@ -221,6 +236,9 @@ export default function AddSong({ isHost = true }) {
       )}
       {suggested && (
         <p className="text-green-400 text-xs mb-2 bg-green-400/10 rounded px-2 py-1">{suggested}</p>
+      )}
+      {dupWarning && (
+        <p className="text-yellow-400 text-xs mb-2 bg-yellow-400/10 rounded px-2 py-1">{dupWarning}</p>
       )}
 
       {/* ── Search tab ─────────────────────────────────── */}
