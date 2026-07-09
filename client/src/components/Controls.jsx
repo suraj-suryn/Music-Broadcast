@@ -24,7 +24,7 @@ function cycleRepeat(current) {
 const REPEAT_ICON  = { off: '🔁', all: '🔁', one: '🔂' }
 const REPEAT_TITLE = { off: 'Repeat: Off', all: 'Repeat: All', one: 'Repeat: One' }
 
-export default function Controls({ playing, currentSong, repeat, queueMode, currentTime, syncTimestamp, duration }) {
+export default function Controls({ playing, currentSong, repeat, queueMode, currentTime, syncTimestamp, duration, coDjMode }) {
   if (!currentSong) {
     return (
       <p className="text-gray-500 text-sm">Add a song below to start playing</p>
@@ -64,6 +64,17 @@ export default function Controls({ playing, currentSong, repeat, queueMode, curr
           }`}
         >
           {REPEAT_ICON[repeatMode]}
+        </button>
+
+        {/* Co-DJ toggle */}
+        <button
+          onClick={() => socket.emit('set-codj-mode', { enabled: !coDjMode })}
+          title={coDjMode ? 'Co-DJ ON — click to turn off (guests can add directly)' : 'Co-DJ OFF — click to let guests add songs directly'}
+          className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors text-base shrink-0 text-white ${
+            coDjMode ? 'bg-indigo-600' : 'bg-gray-700 hover:bg-gray-600'
+          }`}
+        >
+          🎧
         </button>
 
         {/* Song title */}

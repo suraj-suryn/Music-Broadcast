@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { socket } from '../socket.js'
 
-export default function Suggestions({ suggestions = [] }) {
+export default function Suggestions({ suggestions = [], coDjMode = false }) {
   const [open, setOpen] = useState(true)
 
   if (!suggestions.length && !open) return null
@@ -29,7 +29,11 @@ export default function Suggestions({ suggestions = [] }) {
 
       {open && (
         <div>
-          {suggestions.length === 0 ? (
+          {coDjMode ? (
+            <p className="px-4 py-3 text-indigo-400 text-xs text-center">
+              🎧 Co-DJ mode is ON — guests can add songs directly to the queue
+            </p>
+          ) : suggestions.length === 0 ? (
             <p className="px-4 py-3 text-gray-600 text-xs text-center">
               No pending suggestions — guests can suggest songs below
             </p>

@@ -25,9 +25,10 @@ function suggestSong(song) {
   socket.emit('suggest-song', { song })
 }
 
-export default function AddSong({ isHost = true }) {
-  // isHost=true  → songs go directly to queue
-  // isHost=false → songs become suggestions for host to approve
+export default function AddSong({ isHost = true, coDjMode = false }) {
+  // isHost=true OR coDjMode=true → songs go directly to queue
+  // isHost=false AND coDjMode=false → songs become suggestions for host to approve
+  const effectiveHost = isHost || coDjMode
   const { state: { queue, currentSong } } = useRoom()
 
   // Check if a song is already playing or queued
@@ -56,14 +57,14 @@ export default function AddSong({ isHost = true }) {
 
   const serverUrl = import.meta.env.VITE_SERVER_URL || ''
 
-  // Route song to queue (host) or suggestion (guest)
+  // Route song to queue (host/co-DJ) or suggestion (guest)
   function submitSong(song) {
-    if (isHost && isDuplicate(song)) {
+    if (effectiveHost && isDuplicate(song)) {
       setDupWarning(`⚠️ "${song.title}" is already in the queue or playing`)
       setTimeout(() => setDupWarning(''), 3500)
       return
     }
-    if (isHost) addToQueue(song)
+    if (effectiveHost) addToQueue(song)
     else {
       suggestSong(song)
       setSuggested(`✓ "${song.title}" suggested!`)
@@ -212,8 +213,7 @@ export default function AddSong({ isHost = true }) {
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
       <h3 className="text-sm font-semibold text-gray-300 mb-3">
-        {isHost ? 'Add Song' : '💡 Suggest a Song'}
-      </h3>
+        {isHost ? 'Add Song' : '💡 Suggest a Song'}        {!isHost && coDjMode && <span className="ml-2 text-xs text-indigo-400 font-normal">🎧 Co-DJ mode</span>}      </h3>
 
       {/* Tab switcher */}
       <div className="flex rounded-lg bg-gray-800 p-0.5 mb-3 text-xs font-medium">
@@ -231,8 +231,11 @@ export default function AddSong({ isHost = true }) {
       </div>
 
       {/* Guest hint + suggestion feedback */}
-      {!isHost && (
+      {!effectiveHost && (
         <p className="text-indigo-400/70 text-xs mb-2">Songs you add will be sent to the host for approval.</p>
+      )}
+      {!isHost && coDjMode && (
+        <p className="text-indigo-400/70 text-xs mb-2">🎧 Co-DJ mode is ON — your songs go directly to the queue!</p>
       )}
       {suggested && (
         <p className="text-green-400 text-xs mb-2 bg-green-400/10 rounded px-2 py-1">{suggested}</p>
@@ -283,7 +286,7 @@ export default function AddSong({ isHost = true }) {
                       <p className="text-gray-500 text-xs truncate">{r.channel}</p>
                     </div>
                     <span className="text-gray-600 group-hover:text-indigo-400 text-sm shrink-0">
-                      {isHost ? '＋' : '💡'}
+                      {effectiveHost ? '＋' : '💡'}
                     </span>
                   </button>
                 </li>

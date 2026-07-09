@@ -36,12 +36,13 @@ module.exports = function registerHandlers(io, socket) {
     socket.to(room.code).emit('user-joined', { users: room.users, hostRestored });
   });
 
-  // ── Add to Queue (host only) ─────────────────────────────
+  // ── Add to Queue (host, or any user in co-DJ mode) ──────
   socket.on('add-to-queue', ({ song } = {}) => {
     const room = getRoomBySocket(socket.id);
     if (!room) return;
     const user = room.users.find(u => u.id === socket.id);
-    if (!user?.isHost) return socket.emit('error', { message: 'Only the host can add songs' });
+    if (!user) return;
+    if (!user.isHost && !room.coDjMode) return socket.emit('error', { message: 'Only the host can add songs' });
     if (!song || !song.source || !song.url) return socket.emit('error', { message: 'Invalid song data' });
 
     const newSong = { ...song, id: uuidv4() };
@@ -52,6 +53,16 @@ module.exports = function registerHandlers(io, socket) {
     } else {
       io.to(room.code).emit('queue-updated', { queue: room.queue });
     }
+  });
+
+  // ── Set Co-DJ Mode (host only) ───────────────────────────
+  socket.on('set-codj-mode', ({ enabled } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    room.coDjMode = !!enabled;
+    io.to(room.code).emit('codj-mode-changed', { coDjMode: room.coDjMode });
   });
 
   // ── Remove from Queue (host only) ───────────────────────
@@ -318,6 +329,16 @@ module.exports = function registerHandlers(io, socket) {
     if (room.chat.length > 100) room.chat.shift();
 
     io.to(room.code).emit('new-message', msg);
+  });
+
+  // ── Emoji Reaction (any user) ────────────────────────────
+  // Pure broadcast — no state stored, ephemeral visual only
+  socket.on('send-reaction', ({ emoji } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user || !emoji) return;
+    io.to(room.code).emit('reaction', { emoji, name: user.name, id: `${Date.now()}-${socket.id}` });
   });
 
   // ── Request Sync (any client) ─────────────────────────────

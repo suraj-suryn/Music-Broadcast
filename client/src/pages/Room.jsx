@@ -10,12 +10,13 @@ import Suggestions from '../components/Suggestions.jsx'
 import Chat from '../components/Chat.jsx'
 import UserList from '../components/UserList.jsx'
 import VoteSkip from '../components/VoteSkip.jsx'
+import ReactionBar from '../components/ReactionBar.jsx'
 
 export default function Room() {
   const { code } = useParams()
   const navigate = useNavigate()
   const { state, dispatch } = useRoom()
-  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat, queueMode, history, suggestions } = state
+  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat, queueMode, history, suggestions, coDjMode } = state
   const playerRef = useRef(null)
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
@@ -56,6 +57,25 @@ export default function Room() {
     return () => clearTimeout(t)
   }, [currentSong?.id])
 
+  // ── Message notification toast ─────────────────────────
+  const [msgNotif, setMsgNotif] = useState(null) // { name, text }
+  const msgNotifTimerRef = useRef(null)
+
+  // ── Emoji reactions ────────────────────────────────────
+  const [reactions, setReactions] = useState([])
+  function handleReact(emoji) {
+    socket.emit('send-reaction', { emoji })
+  }
+  useEffect(() => {
+    function onReaction(r) {
+      const floater = { ...r, x: 10 + Math.random() * 80 } // random horizontal %
+      setReactions(prev => [...prev, floater])
+      setTimeout(() => setReactions(prev => prev.filter(f => f.id !== floater.id)), 2400)
+    }
+    socket.on('reaction', onReaction)
+    return () => socket.off('reaction', onReaction)
+  }, [])
+
   useEffect(() => {
     // Redirect if no room state (e.g. page refresh)
     if (!room || !user) {
@@ -76,8 +96,17 @@ export default function Room() {
     function onSuggestionsUpdated({ suggestions }) {
       dispatch({ type: 'SUGGESTIONS_UPDATED', suggestions })
     }
+    function onCoDjModeChanged({ coDjMode }) {
+      dispatch({ type: 'SET_CODJ_MODE', coDjMode })
+    }
     function onNewMessage(message) {
       dispatch({ type: 'NEW_MESSAGE', message })
+      // Show notification toast when sidebar is closed
+      if (!sidebarOpen) {
+        setMsgNotif({ name: message.userName, text: message.text })
+        clearTimeout(msgNotifTimerRef.current)
+        msgNotifTimerRef.current = setTimeout(() => setMsgNotif(null), 3500)
+      }
     }
     function onUserJoined({ users, hostRestored }) {
       dispatch({ type: 'USERS_UPDATED', users })
@@ -142,6 +171,7 @@ export default function Room() {
     socket.on('queue-updated', onQueueUpdated)
     socket.on('history-updated', onHistoryUpdated)
     socket.on('suggestions-updated', onSuggestionsUpdated)
+    socket.on('codj-mode-changed', onCoDjModeChanged)
     socket.on('new-message', onNewMessage)
     socket.on('user-joined', onUserJoined)
     socket.on('user-left', onUserLeft)
@@ -161,6 +191,7 @@ export default function Room() {
       socket.off('queue-updated', onQueueUpdated)
       socket.off('history-updated', onHistoryUpdated)
       socket.off('suggestions-updated', onSuggestionsUpdated)
+      socket.off('codj-mode-changed', onCoDjModeChanged)
       socket.off('new-message', onNewMessage)
       socket.off('user-joined', onUserJoined)
       socket.off('user-left', onUserLeft)
@@ -398,15 +429,18 @@ export default function Room() {
           {/* Controls bar */}
           <div className="px-2 sm:px-4 py-2 bg-gray-900 border-b border-gray-800 flex items-center gap-3 shrink-0 overflow-x-auto">
             {isHost
-              ? <Controls playing={playing} currentSong={currentSong} repeat={repeat} queueMode={queueMode} currentTime={currentTime} duration={songDuration} />
+              ? <Controls playing={playing} currentSong={currentSong} repeat={repeat} queueMode={queueMode} currentTime={currentTime} duration={songDuration} coDjMode={coDjMode} />
               : <VoteSkip key={currentSong?.id} votes={votes} currentSong={currentSong} repeat={repeat} queueMode={queueMode} />
             }
           </div>
 
+          {/* Emoji reaction bar — visible to all users */}
+          <ReactionBar reactions={reactions} onReact={handleReact} />
+
           {/* Scrollable area: Suggestions (host) + AddSong (all) + Queue */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
-            {isHost && <Suggestions suggestions={suggestions} />}
-            <AddSong isHost={isHost} />
+            {isHost && <Suggestions suggestions={suggestions} coDjMode={coDjMode} />}
+            <AddSong isHost={isHost} coDjMode={coDjMode} />
             <Queue queue={queue} isHost={isHost} />
           </div>
         </div>
@@ -452,6 +486,20 @@ export default function Room() {
           <span className="text-indigo-400">▶</span>
           <span className="truncate">{nowPlaying}</span>
         </div>
+      )}
+
+      {/* Message notification toast (shown when sidebar is closed) */}
+      {msgNotif && (
+        <button
+          onClick={() => { setSidebarOpen(true); setUnread(0); setMsgNotif(null) }}
+          className="fixed bottom-4 left-4 z-50 flex items-center gap-2 bg-gray-800/95 hover:bg-gray-700 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl max-w-[220px] text-left transition-colors"
+        >
+          <span className="text-blue-400 shrink-0">💬</span>
+          <div className="min-w-0">
+            <p className="font-semibold text-xs text-gray-300 truncate">{msgNotif.name}</p>
+            <p className="truncate text-xs">{msgNotif.text}</p>
+          </div>
+        </button>
       )}
 
       {/* Error toast */}

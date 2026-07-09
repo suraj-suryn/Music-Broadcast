@@ -16,7 +16,8 @@ const initialState = {
   error: null,
   info: null,
   repeat: false,
-  queueMode: 'consume' // 'consume' | 'cycle'
+  queueMode: 'consume', // 'consume' | 'cycle'
+  coDjMode: false
 }
 
 function reducer(state, action) {
@@ -31,6 +32,7 @@ function reducer(state, action) {
         currentTime: action.currentTime || 0,
         repeat: action.room.repeat || false,
         queueMode: action.room.queueMode || 'consume',
+        coDjMode: action.room.coDjMode || false,
         queue: action.room.queue || [],
         chat: action.room.chat || [],
         history: action.room.history || [],
@@ -88,6 +90,9 @@ function reducer(state, action) {
 
     case 'SET_QUEUE_MODE':
       return { ...state, queueMode: action.queueMode }
+
+    case 'SET_CODJ_MODE':
+      return { ...state, coDjMode: action.coDjMode }
 
     default:
       return state

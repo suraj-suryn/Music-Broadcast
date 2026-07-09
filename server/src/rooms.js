@@ -26,7 +26,8 @@ function createRoom(socket, hostName) {
     voteSkips: new Set(),
     chat: [],
     history: [],   // songs played this session, most-recent last, capped at 100
-    suggestions: [] // pending guest song suggestions, capped at 20
+    suggestions: [], // pending guest song suggestions, capped at 20
+    coDjMode: false  // when true, all users can add directly to queue
   };
   rooms.set(code, room);
   return { room, user: host };
@@ -105,6 +106,7 @@ function serializeRoom(room) {
     chat: room.chat,
     history: room.history || [],
     suggestions: room.suggestions || [],
+    coDjMode: room.coDjMode || false,
     voteSkips: Array.from(room.voteSkips)
   };
 }
