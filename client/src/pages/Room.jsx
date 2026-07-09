@@ -23,6 +23,9 @@ export default function Room() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [unread, setUnread] = useState(0)
   const prevChatLen = useRef(0)
+  // Network share mode: 'lan' = use local IP, 'public' = use tunnel URL
+  const tunnelUrl = import.meta.env.VITE_SERVER_URL || ''
+  const [shareMode, setShareMode] = useState('lan')
 
   // ── Reconnect ──────────────────────────────────────────
   const [reconnecting, setReconnecting] = useState(false)
@@ -225,6 +228,9 @@ export default function Room() {
   }
 
   function getInviteUrl() {
+    if (shareMode === 'public' && tunnelUrl) {
+      return `${tunnelUrl}/?join=${code}`
+    }
     return `${window.location.origin}/?join=${code}`
   }
 
@@ -299,7 +305,7 @@ export default function Room() {
           {/* Invite: share link */}
           <button
             onClick={copyInviteLink}
-            title={linkCopied ? 'Link copied!' : 'Copy invite link'}
+            title={linkCopied ? 'Link copied!' : `Copy invite link (${shareMode === 'public' && tunnelUrl ? 'Public/Internet' : 'LAN'})`}
             className={`w-8 h-8 flex items-center justify-center rounded-lg border transition-colors text-base ${
               linkCopied
                 ? 'bg-green-700/30 border-green-600 text-green-400'
@@ -308,6 +314,21 @@ export default function Room() {
           >
             {linkCopied ? '✓' : '🔗'}
           </button>
+          {/* Network toggle: LAN ↔ Public — only shown when tunnel is configured */}
+          {tunnelUrl && (
+            <button
+              onClick={() => setShareMode(m => m === 'lan' ? 'public' : 'lan')}
+              title={shareMode === 'lan' ? 'Sharing via LAN — click for Public (tunnel)' : 'Sharing via Public (tunnel) — click for LAN'}
+              className={`flex items-center gap-0.5 px-2 h-8 rounded-lg border text-xs font-semibold transition-colors ${
+                shareMode === 'public'
+                  ? 'bg-indigo-600 border-indigo-500 text-white'
+                  : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400 hover:text-white'
+              }`}
+            >
+              {shareMode === 'public' ? '🌐' : '📶'}
+              <span className="hidden sm:inline ml-1">{shareMode === 'public' ? 'Public' : 'LAN'}</span>
+            </button>
+          )}
           {/* QR code */}
           <button
             onClick={() => setShowQR(true)}
