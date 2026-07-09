@@ -9,6 +9,10 @@ export default function Queue({ queue = [], isHost }) {
     )
   }
 
+  function move(fromIndex, toIndex) {
+    socket.emit('reorder-queue', { fromIndex, toIndex })
+  }
+
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 overflow-hidden">
       <div className="px-4 py-2.5 border-b border-gray-800 flex items-center justify-between">
@@ -17,7 +21,7 @@ export default function Queue({ queue = [], isHost }) {
       </div>
 
       <ul className="divide-y divide-gray-800">
-        {queue.map(song => (
+        {queue.map((song, idx) => (
           <li key={song.id} className="flex items-center gap-3 px-4 py-2.5">
             {/* Thumbnail */}
             {song.thumbnail ? (
@@ -38,15 +42,27 @@ export default function Queue({ queue = [], isHost }) {
               <p className="text-xs text-gray-500 capitalize">{song.source}</p>
             </div>
 
-            {/* Remove (host only) */}
+            {/* Host: reorder + remove */}
             {isHost && (
-              <button
-                onClick={() => socket.emit('remove-from-queue', { songId: song.id })}
-                className="text-gray-600 hover:text-red-400 transition-colors shrink-0 text-sm px-1"
-                title="Remove from queue"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  onClick={() => move(idx, idx - 1)}
+                  disabled={idx === 0}
+                  className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-300 disabled:opacity-20 transition-colors text-xs"
+                  title="Move up"
+                >▲</button>
+                <button
+                  onClick={() => move(idx, idx + 1)}
+                  disabled={idx === queue.length - 1}
+                  className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-gray-300 disabled:opacity-20 transition-colors text-xs"
+                  title="Move down"
+                >▼</button>
+                <button
+                  onClick={() => socket.emit('remove-from-queue', { songId: song.id })}
+                  className="w-6 h-6 flex items-center justify-center text-gray-600 hover:text-red-400 transition-colors text-sm ml-1"
+                  title="Remove from queue"
+                >✕</button>
+              </div>
             )}
           </li>
         ))}

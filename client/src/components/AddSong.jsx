@@ -20,19 +20,41 @@ function addToQueue(song) {
   socket.emit('add-to-queue', { song })
 }
 
-export default function AddSong() {
-  const [tab, setTab] = useState('search') // 'search' | 'url' | 'upload'
+function suggestSong(song) {
+  socket.emit('suggest-song', { song })
+}
+
+export default function AddSong({ isHost = true }) {
+  // isHost=true  → songs go directly to queue
+  // isHost=false → songs become suggestions for host to approve
+
+  const [tab, setTab] = useState('search') // 'search' | 'url' | 'upload' | 'import'
   const [ytUrl, setYtUrl] = useState('')
+  const [audioTitle, setAudioTitle] = useState('')
   const [ytLoading, setYtLoading] = useState(false)
   const [uploadLoading, setUploadLoading] = useState(false)
   const [error, setError] = useState('')
+  const [suggested, setSuggested] = useState('') // brief "✓ Suggested!" feedback for guests
   // Search state
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
   const [results, setResults] = useState([])
   const [searchError, setSearchError] = useState('')
+  // Import state
+  const [importProgress, setImportProgress] = useState(null)
+  const [importDone, setImportDone] = useState('')
 
   const serverUrl = import.meta.env.VITE_SERVER_URL || ''
+
+  // Route song to queue (host) or suggestion (guest)
+  function submitSong(song) {
+    if (isHost) addToQueue(song)
+    else {
+      suggestSong(song)
+      setSuggested(`✓ "${song.title}" suggested!`)
+      setTimeout(() => setSuggested(''), 3000)
+    }
+  }
 
   // ── Search ───────────────────────────────────────────────
   async function handleSearch(e) {
@@ -63,35 +85,56 @@ export default function AddSong() {
   }
 
   function addSearchResult(r) {
-    addToQueue({
+    submitSong({
       source: 'youtube',
       videoId: r.videoId,
       url: `https://www.youtube.com/watch?v=${r.videoId}`,
       title: r.title,
       thumbnail: r.thumbnail
     })
-    // Visual feedback — briefly highlight (handled by parent queue update)
+    // Clear results so the list doesn't clutter after adding
+    setResults([])
+    setQuery('')
   }
 
-  // ── URL paste ────────────────────────────────────────────
-  async function handleAddYT(e) {
+  // ── URL (YouTube or direct audio link) ─────────────────────────
+  async function handleAddUrl(e) {
     e.preventDefault()
     setError('')
-    const match = ytUrl.match(YT_REGEX)
-    if (!match) return setError('Could not find a YouTube video ID in that URL')
+    const trimmedUrl = ytUrl.trim()
+    if (!trimmedUrl) return
 
-    const videoId = match[1]
-    setYtLoading(true)
-    const title = await fetchYTTitle(videoId)
-    addToQueue({
-      source: 'youtube',
-      videoId,
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-      title,
-      thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-    })
+    // YouTube URL
+    const match = trimmedUrl.match(YT_REGEX)
+    if (match) {
+      const videoId = match[1]
+      setYtLoading(true)
+      const title = await fetchYTTitle(videoId)
+      submitSong({
+        source: 'youtube',
+        videoId,
+        url: `https://www.youtube.com/watch?v=${videoId}`,
+        title,
+        thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+      })
+      setYtUrl('')
+      setAudioTitle('')
+      setYtLoading(false)
+      return
+    }
+
+    // Direct audio link
+    try { new URL(trimmedUrl) } catch { return setError('Enter a valid URL') }
+    const pathParts = new URL(trimmedUrl).pathname.split('/').filter(Boolean)
+    const filename = pathParts[pathParts.length - 1] ?? ''
+    const autoTitle = decodeURIComponent(filename)
+      .replace(/\.[^.]+$/, '')
+      .replace(/[_-]+/g, ' ')
+      .trim()
+    const title = audioTitle.trim() || autoTitle || 'Audio Link'
+    submitSong({ source: 'upload', url: trimmedUrl, title, thumbnail: null })
     setYtUrl('')
-    setYtLoading(false)
+    setAudioTitle('')
   }
 
   // ── File upload ──────────────────────────────────────────
@@ -106,7 +149,7 @@ export default function AddSong() {
       const res = await fetch(`${serverUrl}/api/upload`, { method: 'POST', body: form })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
-      addToQueue({
+      submitSong({
         source: 'upload',
         url: `${serverUrl}${data.url}`,
         title: data.title,
@@ -120,16 +163,49 @@ export default function AddSong() {
     }
   }
 
+  // ── Playlist import ──────────────────────────────────
+  async function handleImport(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setError(''); setImportProgress(null); setImportDone('')
+    const text = await file.text()
+    // Extract every YouTube URL from the file regardless of format
+    const matches = [...text.matchAll(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g)]
+    const videoIds = [...new Set(matches.map(m => m[1]))] // deduplicate
+    if (!videoIds.length) { setError('No YouTube URLs found in the file'); e.target.value = ''; return }
+
+    // Fetch all titles in parallel
+    setImportProgress(`Fetching titles for ${videoIds.length} song${videoIds.length !== 1 ? 's' : ''}…`)
+    const songs = await Promise.all(videoIds.map(async (videoId) => ({
+      source: 'youtube',
+      videoId,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      title: await fetchYTTitle(videoId),
+      thumbnail: `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+    })))
+
+    // Add to queue / suggest one by one
+    songs.forEach((song, i) => {
+      setImportProgress(`${isHost ? 'Adding' : 'Suggesting'} ${i + 1} / ${songs.length}…`)
+      submitSong(song)
+    })
+    setImportProgress(null)
+    setImportDone(`✅ ${isHost ? 'Added' : 'Suggested'} ${songs.length} song${songs.length !== 1 ? 's' : ''}`)
+    e.target.value = ''
+  }
+
   return (
     <div className="bg-gray-900 rounded-xl border border-gray-800 p-4">
-      <h3 className="text-sm font-semibold text-gray-300 mb-3">Add Song</h3>
+      <h3 className="text-sm font-semibold text-gray-300 mb-3">
+        {isHost ? 'Add Song' : '💡 Suggest a Song'}
+      </h3>
 
       {/* Tab switcher */}
       <div className="flex rounded-lg bg-gray-800 p-0.5 mb-3 text-xs font-medium">
-        {[['search', '🔍 Search'], ['url', '🔗 URL'], ['upload', '📁 Upload']].map(([key, label]) => (
+        {[['search', '🔍 Search'], ['url', '🔗 URL'], ['upload', '📁 Upload'], ['import', '📋 Import']].map(([key, label]) => (
           <button
             key={key}
-            onClick={() => { setTab(key); setError(''); setSearchError('') }}
+            onClick={() => { setTab(key); setError(''); setSearchError(''); setImportDone('') }}
             className={`flex-1 py-1.5 rounded-md transition-colors ${
               tab === key ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
             }`}
@@ -138,6 +214,14 @@ export default function AddSong() {
           </button>
         ))}
       </div>
+
+      {/* Guest hint + suggestion feedback */}
+      {!isHost && (
+        <p className="text-indigo-400/70 text-xs mb-2">Songs you add will be sent to the host for approval.</p>
+      )}
+      {suggested && (
+        <p className="text-green-400 text-xs mb-2 bg-green-400/10 rounded px-2 py-1">{suggested}</p>
+      )}
 
       {/* ── Search tab ─────────────────────────────────── */}
       {tab === 'search' && (
@@ -180,7 +264,9 @@ export default function AddSong() {
                       <p className="text-white text-xs font-medium truncate group-hover:text-indigo-300">{r.title}</p>
                       <p className="text-gray-500 text-xs truncate">{r.channel}</p>
                     </div>
-                    <span className="text-gray-600 group-hover:text-indigo-400 text-sm shrink-0">＋</span>
+                    <span className="text-gray-600 group-hover:text-indigo-400 text-sm shrink-0">
+                      {isHost ? '＋' : '💡'}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -197,21 +283,33 @@ export default function AddSong() {
 
       {/* ── URL tab ────────────────────────────────────── */}
       {tab === 'url' && (
-        <form onSubmit={handleAddYT} className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            placeholder="e.g. https://youtu.be/dQw4w9WgXcQ"
-            value={ytUrl}
-            onChange={e => setYtUrl(e.target.value)}
-            className="flex-1 min-w-0 bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 transition-colors placeholder-gray-600"
-          />
-          <button
-            type="submit"
-            disabled={ytLoading}
-            className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto sm:shrink-0"
-          >
-            {ytLoading ? '…' : '▶ Add'}
-          </button>
+        <form onSubmit={handleAddUrl} className="flex flex-col gap-2">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="YouTube URL or direct audio link (mp3, wav, ogg…)"
+              value={ytUrl}
+              onChange={e => setYtUrl(e.target.value)}
+              className="flex-1 min-w-0 bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder-gray-600"
+            />
+            <button
+              type="submit"
+              disabled={ytLoading}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+            >
+              {ytLoading ? '…' : '▶ Add'}
+            </button>
+          </div>
+          {/* Title input — shown for non-YouTube links so user can name the track */}
+          {ytUrl.trim() && !ytUrl.match(YT_REGEX) && (
+            <input
+              type="text"
+              placeholder="Song title (optional, auto-detected from URL)"
+              value={audioTitle}
+              onChange={e => setAudioTitle(e.target.value)}
+              className="bg-gray-800 border border-gray-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors placeholder-gray-600"
+            />
+          )}
         </form>
       )}
 
@@ -232,6 +330,36 @@ export default function AddSong() {
             onChange={handleFileUpload}
           />
         </label>
+      )}
+
+      {/* ── Import tab ─────────────────────────────────── */}
+      {tab === 'import' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-gray-500 text-xs">
+            Upload a <span className="text-gray-300">.txt</span> file with YouTube URLs — one per line, or a previously exported playlist.
+          </p>
+          <label className={`flex items-center gap-2 border-2 border-dashed rounded-lg px-3 py-3 text-sm cursor-pointer transition-colors select-none ${
+            importProgress
+              ? 'border-gray-700 text-gray-600 cursor-not-allowed'
+              : 'border-gray-700 hover:border-indigo-500 text-gray-400 hover:text-indigo-400'
+          }`}>
+            <span className="text-base">📋</span>
+            <span>{importProgress || 'Choose playlist .txt file'}</span>
+            <input
+              type="file"
+              accept=".txt,text/plain"
+              className="hidden"
+              disabled={!!importProgress}
+              onChange={handleImport}
+            />
+          </label>
+          {importDone && (
+            <p className="text-green-400 text-xs bg-green-400/10 rounded px-2 py-1">{importDone}</p>
+          )}
+          <p className="text-gray-600 text-xs">
+            Tip: save a playlist from a previous session using the 💾 button in the room header.
+          </p>
+        </div>
       )}
 
       {error && (

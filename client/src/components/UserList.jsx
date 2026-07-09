@@ -16,15 +16,28 @@ export default function UserList({ users = [], currentUser }) {
             {u.isHost && (
               <span className="text-yellow-400 text-xs" title="Host">👑</span>
             )}
-            {/* Host-only: transfer button shown on non-host users */}
+            {/* Host-only: transfer + kick buttons shown on non-host users */}
             {amHost && !u.isHost && (
-              <button
-                onClick={() => socket.emit('transfer-host', { toUserId: u.id })}
-                title={`Make ${u.name} the host`}
-                className="text-gray-600 hover:text-yellow-400 text-xs transition-colors shrink-0"
-              >
-                👑
-              </button>
+              <>
+                <button
+                  onClick={() => socket.emit('transfer-host', { toUserId: u.id })}
+                  title={`Make ${u.name} the host`}
+                  className="text-gray-600 hover:text-yellow-400 text-xs transition-colors shrink-0"
+                >
+                  👑
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Remove ${u.name} from the room?`)) {
+                      socket.emit('kick-user', { userId: u.id })
+                    }
+                  }}
+                  title={`Kick ${u.name}`}
+                  className="text-gray-600 hover:text-red-400 text-xs transition-colors shrink-0"
+                >
+                  🚫
+                </button>
+              </>
             )}
           </li>
         ))}

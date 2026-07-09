@@ -34,12 +34,10 @@ export default function VoteSkip({ votes, currentSong, repeat, queueMode }) {
         </span>
       )}
 
-      {repeat && (
-        <span className="text-indigo-400 text-sm" title="Host has repeat on">🔁</span>
-      )}
-
-      {queueMode === 'cycle' && (
-        <span className="text-indigo-400 text-sm" title="Queue loop is on">🔄</span>
+      {(repeat || queueMode === 'cycle') && (
+        <span className="text-indigo-400 text-sm" title={repeat ? 'Repeat: One' : 'Repeat: All'}>
+          {repeat ? '🔂' : '🔁'}
+        </span>
       )}
 
       <span className="text-gray-600 text-sm truncate min-w-0 hidden sm:block">

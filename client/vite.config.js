@@ -26,6 +26,11 @@ export default defineConfig({
     ? { 'import.meta.env.VITE_SERVER_URL': JSON.stringify(networkConfig.tunnelUrl) }
     : { 'import.meta.env.VITE_SERVER_PORT': JSON.stringify(String(port)) },
   server: {
-    host: true  // expose Vite dev server on LAN as well
+    host: true,  // expose Vite dev server on LAN as well
+    proxy: {
+      // Forward /api and /uploads to the backend in dev (LAN) mode
+      '/api':     { target: `http://localhost:${port}`, changeOrigin: true },
+      '/uploads': { target: `http://localhost:${port}`, changeOrigin: true }
+    }
   }
 })

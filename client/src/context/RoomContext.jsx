@@ -10,6 +10,8 @@ const initialState = {
   currentTime: 0,
   queue: [],
   chat: [],
+  history: [],
+  suggestions: [],
   votes: { votes: 0, total: 0, threshold: 0 },
   error: null,
   info: null,
@@ -31,9 +33,17 @@ function reducer(state, action) {
         queueMode: action.room.queueMode || 'consume',
         queue: action.room.queue || [],
         chat: action.room.chat || [],
+        history: action.room.history || [],
+        suggestions: action.room.suggestions || [],
         votes: { votes: 0, total: 0, threshold: 0 },
         error: null
       }
+
+    case 'HISTORY_UPDATED':
+      return { ...state, history: action.history }
+
+    case 'SUGGESTIONS_UPDATED':
+      return { ...state, suggestions: action.suggestions }
 
     case 'PLAYBACK_SYNC':
       return {

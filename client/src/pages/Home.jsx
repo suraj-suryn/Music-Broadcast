@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { socket } from '../socket.js'
 import { useRoom } from '../context/RoomContext.jsx'
 
@@ -7,10 +7,20 @@ export default function Home() {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
   const [mode, setMode] = useState('create') // 'create' | 'join'
+  const [joinLocked, setJoinLocked] = useState(false) // true when ?join= param present
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { dispatch } = useRoom()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [kicked, setKicked] = useState(!!location.state?.kicked)
+
+  // Auto-dismiss the kicked banner after 4 s
+  useEffect(() => {
+    if (!kicked) return
+    const t = setTimeout(() => setKicked(false), 4000)
+    return () => clearTimeout(t)
+  }, [kicked])
 
   // Pre-fill code from invite link: /?join=ABC123
   useEffect(() => {
@@ -19,6 +29,7 @@ export default function Home() {
     if (joinCode) {
       setCode(joinCode.toUpperCase())
       setMode('join')
+      setJoinLocked(true)
     }
   }, [])
 
@@ -66,6 +77,13 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+      {kicked && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-red-600/90 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+          <span>🚫</span>
+          <span>You were removed from the room.</span>
+          <button onClick={() => setKicked(false)} className="ml-2 text-white/70 hover:text-white text-xs">✕</button>
+        </div>
+      )}
       <div className="w-full max-w-md">
 
         {/* Header */}
@@ -84,17 +102,25 @@ export default function Home() {
               <button
                 key={m}
                 type="button"
-                onClick={() => switchMode(m)}
+                onClick={() => !joinLocked && switchMode(m)}
+                disabled={joinLocked && m === 'create'}
                 className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors capitalize ${
                   mode === m
                     ? 'bg-indigo-600 text-white shadow'
-                    : 'text-gray-400 hover:text-white'
+                    : joinLocked && m === 'create'
+                      ? 'text-gray-600 cursor-not-allowed'
+                      : 'text-gray-400 hover:text-white'
                 }`}
               >
                 {m === 'create' ? 'Create Room' : 'Join Room'}
               </button>
             ))}
           </div>
+          {joinLocked && (
+            <p className="text-xs text-indigo-400 text-center -mt-4 mb-4">
+              📨 You were invited — enter your name to join
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>

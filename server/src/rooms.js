@@ -24,7 +24,9 @@ function createRoom(socket, hostName) {
     startedAt: null,
     playedSeconds: 0,
     voteSkips: new Set(),
-    chat: []
+    chat: [],
+    history: [],   // songs played this session, most-recent last, capped at 100
+    suggestions: [] // pending guest song suggestions, capped at 20
   };
   rooms.set(code, room);
   return { room, user: host };
@@ -101,6 +103,8 @@ function serializeRoom(room) {
     queueMode: room.queueMode,
     playedSeconds: room.playedSeconds,
     chat: room.chat,
+    history: room.history || [],
+    suggestions: room.suggestions || [],
     voteSkips: Array.from(room.voteSkips)
   };
 }

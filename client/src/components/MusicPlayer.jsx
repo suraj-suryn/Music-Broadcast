@@ -54,6 +54,10 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
   // Refs keep values fresh inside YT event closures
   const qualityRef = useRef('default')
   const availableQualitiesRef = useRef([])
+  // Silent audio keepalive — created once, never recreated
+  const keepAliveRef = useRef(null)
+  // Song duration (seconds) — set when player reports it
+  const durationRef = useRef(0)
 
   // Latest values for async callbacks
   const playingRef = useRef(playing)
@@ -70,6 +74,16 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
     qualityRef.current = 'default'
     availableQualitiesRef.current = []
   }, [currentSong?.id])
+
+  // Create single silent <audio> element for keepalive (never recreated)
+  useEffect(() => {
+    const SILENT = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=='
+    const sa = new Audio(SILENT)
+    sa.loop = true
+    sa.volume = 0.001
+    keepAliveRef.current = sa
+    return () => { sa.pause(); sa.src = ''; keepAliveRef.current = null }
+  }, [])
 
   // Fullscreen API
   useEffect(() => {
@@ -97,9 +111,14 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
     function release() {
       if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null }
     }
-    // Re-acquire when tab becomes visible again (released on hide)
+    // Re-acquire when tab becomes visible again; also resume player that browser may have paused
     function onVisibilityChange() {
-      if (document.visibilityState === 'visible' && playing && currentSong) acquire()
+      if (document.visibilityState === 'visible' && playing && currentSong) {
+        acquire()
+        if (ytPlayerRef.current) { try { ytPlayerRef.current.playVideo() } catch {} }
+        if (audioRef.current) { audioRef.current.play().catch(() => {}) }
+        if (keepAliveRef.current) { keepAliveRef.current.play().catch(() => {}) }
+      }
     }
     if (playing && currentSong) acquire()
     else release()
@@ -108,15 +127,21 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
   }, [playing, currentSong])
 
   // ── Media Session: show media controls on lock screen ────
-  // (most useful for uploaded audio; YouTube iframes handle this internally)
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentSong) return
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentSong.title,
       artist: 'Music Room'
     })
+    navigator.mediaSession.setActionHandler('play',      () => socket.emit('play'))
+    navigator.mediaSession.setActionHandler('pause',     () => socket.emit('pause'))
     navigator.mediaSession.setActionHandler('nexttrack', () => socket.emit('song-ended'))
-    return () => { navigator.mediaSession.metadata = null }
+    return () => {
+      navigator.mediaSession.metadata = null
+      navigator.mediaSession.setActionHandler('play', null)
+      navigator.mediaSession.setActionHandler('pause', null)
+      navigator.mediaSession.setActionHandler('nexttrack', null)
+    }
   }, [currentSong?.id])
 
   // Sync Media Session playback state
@@ -126,18 +151,17 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
   }, [playing])
 
   // ── Silent audio keepalive ───────────────────────────────
-  // Plays a near-silent loop while YouTube is active so mobile browsers
-  // treat the page as having live audio → music continues when screen
-  // locks, app is backgrounded, or another tab is opened.
+  // Starts/stops the persistent keepalive element so mobile browsers
+  // register an active audio session → reduces background suspension.
+  // Applies to both YouTube and uploaded audio sources.
   useEffect(() => {
-    if (currentSong?.source !== 'youtube' || !playing) return
-    // 44-byte minimal silent WAV
-    const SILENT = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAA=='
-    const sa = new Audio(SILENT)
-    sa.loop   = true
-    sa.volume = 0.001   // inaudible
-    sa.play().catch(() => {})
-    return () => { sa.pause(); sa.src = '' }
+    const ka = keepAliveRef.current
+    if (!ka) return
+    if (playing && currentSong) {
+      ka.play().catch(() => {})
+    } else {
+      ka.pause()
+    }
   }, [playing, currentSong?.id])
 
   // Load YouTube IFrame API once
@@ -190,6 +214,11 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
         },
         onStateChange(e) {
           if (e.data === window.YT.PlayerState.ENDED) socket.emit('song-ended')
+          // Capture duration once video is playing/buffering
+          if (e.data === 1 || e.data === 3) {
+            const dur = e.target.getDuration?.() ?? 0
+            if (dur > 0) durationRef.current = dur
+          }
           // Populate quality list once video starts buffering/playing
           if ((e.data === 1 || e.data === 3) && availableQualitiesRef.current.length === 0) {
             const levels = e.target.getAvailableQualityLevels?.() ?? []
@@ -219,8 +248,12 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
     }
   }, [currentSong?.id, ytReady])
 
-  // applySync exposed to Room.jsx
+  // Reset duration when song changes
+  useEffect(() => { durationRef.current = 0 }, [currentSong?.id])
+
+  // applySync + getDuration exposed to Room.jsx
   useImperativeHandle(ref, () => ({
+    getDuration() { return durationRef.current },
     applySync({ playing, currentTime, timestamp, song }) {
       const adjusted = playing && timestamp
         ? currentTime + (Date.now() - timestamp) / 1000
@@ -356,7 +389,13 @@ const MusicPlayer = forwardRef(function MusicPlayer({ currentSong, playing, curr
       style={{ height: audioHeight }}
     >
       {/* Audio element always present */}
-      <audio ref={audioRef} src={currentSong.url} onEnded={() => socket.emit('song-ended')} className="hidden" />
+      <audio
+        ref={audioRef}
+        src={currentSong.url}
+        onLoadedMetadata={() => { durationRef.current = audioRef.current?.duration || 0 }}
+        onEnded={() => socket.emit('song-ended')}
+        className="hidden"
+      />
 
       {/* Mini bar */}
       {playerSize === 'min' ? (

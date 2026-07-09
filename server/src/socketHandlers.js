@@ -192,6 +192,79 @@ module.exports = function registerHandlers(io, socket) {
     });
   });
 
+  // ── Reorder Queue (host only) ─────────────────────────────
+  socket.on('reorder-queue', ({ fromIndex, toIndex } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    if (typeof fromIndex !== 'number' || typeof toIndex !== 'number') return;
+    const len = room.queue.length;
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= len || toIndex >= len || fromIndex === toIndex) return;
+    const [moved] = room.queue.splice(fromIndex, 1);
+    room.queue.splice(toIndex, 0, moved);
+    io.to(room.code).emit('queue-updated', { queue: room.queue });
+  });
+
+  // ── Kick User (host only) ────────────────────────────────
+  socket.on('kick-user', ({ userId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const kicker = room.users.find(u => u.id === socket.id);
+    if (!kicker?.isHost) return;
+    if (!userId || userId === socket.id) return;
+    const target = room.users.find(u => u.id === userId);
+    if (!target || target.isHost) return;
+
+    room.users = room.users.filter(u => u.id !== userId);
+    room.voteSkips.delete(userId);
+
+    io.to(userId).emit('kicked');
+    io.to(room.code).emit('user-left', { users: room.users });
+  });
+
+  // ── Suggest Song (any non-host user) ────────────────────
+  socket.on('suggest-song', ({ song } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user) return;
+    if (!song || !song.source || !song.url) return;
+    if (room.suggestions.length >= 20) return socket.emit('error', { message: 'Suggestion queue is full (max 20)' });
+
+    const suggestion = { ...song, id: uuidv4(), suggestedBy: user.name, suggestedById: socket.id };
+    room.suggestions.push(suggestion);
+    io.to(room.code).emit('suggestions-updated', { suggestions: room.suggestions });
+  });
+
+  // ── Approve Suggestion (host only) ──────────────────────
+  socket.on('approve-suggestion', ({ suggestionId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    const idx = room.suggestions.findIndex(s => s.id === suggestionId);
+    if (idx === -1) return;
+
+    const [suggestion] = room.suggestions.splice(idx, 1);
+    // Add to queue (strip suggestion metadata)
+    const { suggestedBy, suggestedById, ...song } = suggestion;
+    room.queue.push(song);
+    if (!room.currentSong) advanceSong(io, room);
+    else io.to(room.code).emit('queue-updated', { queue: room.queue });
+    io.to(room.code).emit('suggestions-updated', { suggestions: room.suggestions });
+  });
+
+  // ── Reject Suggestion (host only) ───────────────────────
+  socket.on('reject-suggestion', ({ suggestionId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    room.suggestions = room.suggestions.filter(s => s.id !== suggestionId);
+    io.to(room.code).emit('suggestions-updated', { suggestions: room.suggestions });
+  });
+
   // ── Vote to Skip (guests only) ──────────────────────────
   socket.on('vote-skip', () => {
     const room = getRoomBySocket(socket.id);
@@ -233,6 +306,19 @@ module.exports = function registerHandlers(io, socket) {
     io.to(room.code).emit('new-message', msg);
   });
 
+  // ── Request Sync (any client) ─────────────────────────────
+  // Used by clients returning from background to re-sync playback state.
+  socket.on('request-sync', () => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    socket.emit('playback-sync', {
+      playing: room.playing,
+      currentTime: getCurrentTime(room),
+      timestamp: room.playing ? Date.now() : null,
+      song: room.currentSong
+    });
+  });
+
   // ── Disconnect ───────────────────────────────────────────
   socket.on('disconnect', () => {
     const result = leaveRoom(socket.id);
@@ -247,6 +333,13 @@ module.exports = function registerHandlers(io, socket) {
 
 // ── Helper ───────────────────────────────────────────────────
 function advanceSong(io, room) {
+  // Archive the finishing song to history
+  if (room.currentSong) {
+    room.history.push({ ...room.currentSong, playedAt: Date.now() });
+    if (room.history.length > 100) room.history.shift();
+    io.to(room.code).emit('history-updated', { history: room.history });
+  }
+
   // In cycle mode: push the current (just-finished) song back to end of queue
   if (room.queueMode === 'cycle' && room.currentSong) {
     room.queue.push({ ...room.currentSong });

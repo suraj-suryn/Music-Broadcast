@@ -5,29 +5,42 @@ A real-time collaborative music room — create a room, share the code, and list
 ## Features
 
 ### Playback
-- **YouTube playback** — paste any YouTube URL; plays in sync for everyone with latency compensation
+- **YouTube search** — search YouTube directly from the room; host (or guests suggesting) get 8 embeddable results with thumbnails
+- **YouTube URL / direct audio link** — paste any YouTube URL *or* a direct audio link (mp3, wav, ogg, m4a); added by title auto-detection
 - **File upload** — upload MP3/WAV (up to 50 MB); streamed in sync across all clients
+- **Seek / progress bar** — draggable time bar with `0:00 / 4:23` display; host can seek to any position
 - **Per-viewer quality** — each viewer picks their own YouTube quality (Auto / 1080p / 720p / 480p / ...)
-- **Song repeat / loop** — host can toggle 🔁 to loop the current song indefinitely
-- **Queue loop** — host can toggle 🔄 to cycle played songs back to the end of the queue (plays forever)
-- **Background playback** — Wake Lock keeps screen on; Media Session shows controls on lock screen; silent audio keepalive survives tab switch and screen lock
+- **Repeat cycle** — one button cycles: Off → Repeat All (queue loops forever) → Repeat One (current song loops) → Off
+- **Background playback** — Wake Lock keeps screen on; Media Session shows controls on lock screen; silent audio keepalive survives tab switch and screen lock; auto-reconnect re-syncs on foreground return
 
 ### Room & Controls
 - **Room system** — 6-character shareable room code; no login required
-- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat 🔁 / queue loop 🔄
-- **Manual host transfer** — host can tap 👑 next to any user to hand over control
+- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat cycle
+- **Keyboard shortcuts** — `Space` play/pause, `→` next, `R` repeat cycle (host only; blocked while typing)
+- **Guest song suggestions** — guests search and suggest songs; host sees a 💡 panel with approve ✓ / reject ✕ per suggestion; suggestions update live for everyone
+- **Manual host transfer** — host taps 👑 next to any user to hand over control
+- **Kick user** — host can tap 🚫 next to any user to remove them; kicked user is redirected home with a message
 - **Vote to skip** — guests vote; majority auto-skips
 - **Host restore** — if the host leaves or reloads, the next user becomes temp host; original host gets control back automatically when they rejoin with the same name
-- **Live chat** — two-way chat; host and all guests can type; unread badge on mobile
+- **Auto-reconnect** — brief network drop shows "Reconnecting…" overlay; auto-rejoins and re-syncs without navigating away
+- **Live chat** — two-way chat; host and all guests can type; unread badge
 
-### Invite
+### Invite & Sharing
 - **Invite link** — one-tap copy of a full join URL (`?join=ROOMCODE`)
 - **QR code** — tap 📱 to show a scannable QR code; anyone scans with phone camera to join instantly
-- **Auto-fill** — opening an invite link pre-fills the room code and switches to Join mode
+- **Invite link safety** — opening an invite link pre-fills the room code, locks to Join mode, and disables Create Room to prevent accidental new rooms
+- **Export playlist** — 💾 button downloads a `.txt` file with all played + current + queued songs with their YouTube URLs
+- **Import playlist** — 📋 tab in Add Song uploads any `.txt` file; scans for YouTube URLs and bulk-adds all songs to the queue
+
+### Queue
+- **Queue reorder** — host can reorder queued songs with ▲ ▼ buttons
+- **Queue loop mode** — included in the repeat cycle (Repeat All)
+- **Song deduplication** — search results clear after adding so the screen stays clean
 
 ### Player UI
+- **Now-playing toast** — brief `▶ Song Title` notification when track changes
 - **Minimize / Restore / Maximize / Fullscreen** — size controls on the video overlay
-- **Responsive layout** — auto-adapts to phone, tablet, and desktop; chat sidebar slides in as overlay on mobile with unread badge
+- **Responsive layout** — auto-adapts to phone, tablet, and desktop; chat sidebar starts closed (open with 💬), slides in as overlay on all screen sizes
 
 ### Network
 - **LAN mode** — share your IP on the same Wi-Fi; zero config
@@ -135,10 +148,21 @@ Run `npm start` — share the tunnel URL with anyone on the internet.
 
 1. Open the app in a browser
 2. Enter a display name → **Create Room** to get a 6-character code
-3. Share the code with friends → they click **Join Room** → enter the code
-4. **Host:** paste a YouTube URL or upload an audio file → press ▶ to play
-5. **Guests:** vote to skip, chat, watch in the quality of their choice
-6. **Invite others:** tap 🔗 to copy an invite link or 📱 for a QR code — opening the link auto-fills the room code
+3. Share the code (or the invite link via 🔗 / QR via 📱) with friends
+4. **Host:** search YouTube, paste a URL, or upload an audio file → ▶ to play
+5. **Guests:** search and suggest songs (host approves 💡), vote to skip, chat
+6. **Seek:** drag the progress bar to jump to any position (host only)
+7. **Repeat:** click 🔁 to cycle Off → Repeat All → Repeat One
+8. **Export:** click 💾 anytime to save the session's songs as a `.txt` file
+9. **Import:** use the 📋 tab in Add Song to load a saved `.txt` playlist
+
+### Keyboard shortcuts (host only, blocked while typing in chat/inputs)
+
+| Key | Action |
+|---|---|
+| `Space` | Play / Pause |
+| `→` | Skip to next song |
+| `R` | Cycle repeat mode |
 
 ### Embeddable YouTube videos
 
@@ -185,8 +209,10 @@ Music-Broadcast/
 │   ├── vite.config.js         # reads network.config.json
 │   └── src/
 │       ├── pages/             # Home.jsx (invite link support), Room.jsx
-│       ├── components/        # MusicPlayer, Controls, Queue, AddSong,
-│       │                      # Chat, UserList (host transfer), VoteSkip
+│       ├── components/        # MusicPlayer, Controls (seek bar, repeat cycle),
+│       │                      # Queue (reorder), AddSong (search/URL/upload/import),
+│       │                      # Suggestions (host approval panel), Chat,
+│       │                      # UserList (host transfer + kick), VoteSkip
 │       ├── context/           # RoomContext.jsx
 │       └── socket.js          # Socket.io client
 └── server/                    # Node.js backend
@@ -213,9 +239,10 @@ Music-Broadcast/
 
 ## Version History
 
-| Tag | Changes |
+| Version | Changes |
 |---|---|
-| v8+ | Queue loop 🔄, manual host transfer, invite link + QR code, background playback fixes |
+| **v9** | Guest song suggestions (💡 approve/reject), seek/progress bar, queue reorder ▲▼, repeat cycle (Off→All→One), keyboard shortcuts, auto-reconnect overlay, now-playing toast, invite link safety (locked join mode), host kick user 🚫, direct audio URL link, playlist export 💾 + import 📋, song play history, chat sidebar closed by default, Vite dev proxy for YouTube search API |
+| v8 | YouTube search, queue loop 🔄, manual host transfer 👑, invite link + QR code, background playback fixes (persistent keepalive, Media Session play/pause, visibility re-sync) |
 | v7 | Responsive layout — mobile sidebar overlay, chat unread badge |
 | v6 | Background playback (Wake Lock + Media Session), song repeat 🔁 |
 | v5 | Per-viewer YouTube quality selector |
