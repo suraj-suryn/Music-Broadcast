@@ -220,11 +220,26 @@ export default function Room() {
     prevChatLen.current = chat.length
   }, [chat.length, sidebarOpen])
 
+  // Clipboard helper — falls back to execCommand for HTTP/LAN contexts
+  function copyText(text, onSuccess) {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(onSuccess).catch(() => execCopy(text, onSuccess))
+    } else {
+      execCopy(text, onSuccess)
+    }
+  }
+  function execCopy(text, onSuccess) {
+    const el = document.createElement('textarea')
+    el.value = text
+    el.style.cssText = 'position:fixed;opacity:0'
+    document.body.appendChild(el)
+    el.focus(); el.select()
+    try { document.execCommand('copy'); onSuccess() } catch {}
+    document.body.removeChild(el)
+  }
+
   function copyCode() {
-    navigator.clipboard.writeText(code).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
+    copyText(code, () => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
   }
 
   function getInviteUrl() {
@@ -235,10 +250,7 @@ export default function Room() {
   }
 
   function copyInviteLink() {
-    navigator.clipboard.writeText(getInviteUrl()).then(() => {
-      setLinkCopied(true)
-      setTimeout(() => setLinkCopied(false), 2000)
-    })
+    copyText(getInviteUrl(), () => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000) })
   }
 
   function downloadPlaylist() {
