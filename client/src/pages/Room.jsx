@@ -34,6 +34,29 @@ export default function Room() {
   const userNameRef = useRef(user?.name ?? null)
   useEffect(() => { if (user?.name) userNameRef.current = user.name }, [user?.name])
 
+  // ── Auto-save playlist to localStorage ────────────────
+  // Every song added/played is saved automatically — no need to wait for 💾
+  const prevQueueIdsRef = useRef(new Set())
+  const [savedCount, setSavedCount] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`music-playlist-${code}`) || '[]').length }
+    catch { return 0 }
+  })
+  function autoSaveSongs(songs) {
+    if (!songs?.length) return
+    const key = `music-playlist-${code}`
+    try {
+      const existing = JSON.parse(localStorage.getItem(key) || '[]')
+      const existingIds = new Set(existing.map(s => s.id))
+      const toAdd = songs
+        .filter(s => s?.id && !existingIds.has(s.id))
+        .map(s => ({ id: s.id, title: s.title, url: s.url || '', source: s.source }))
+      if (!toAdd.length) return
+      const updated = [...existing, ...toAdd]
+      localStorage.setItem(key, JSON.stringify(updated))
+      setSavedCount(updated.length)
+    } catch {}
+  }
+
   // ── Duration (polled from player ref) ─────────────────
   const [songDuration, setSongDuration] = useState(0)
   useEffect(() => { setSongDuration(0) }, [currentSong?.id])
@@ -95,9 +118,14 @@ export default function Room() {
     function onPlaybackSync(data) {
       dispatch({ type: 'PLAYBACK_SYNC', payload: data })
       playerRef.current?.applySync(data)
+      if (data.song) autoSaveSongs([data.song]) // auto-save current song
     }
     function onQueueUpdated({ queue }) {
       dispatch({ type: 'QUEUE_UPDATED', queue })
+      // Auto-save any newly queued songs (diff against previously seen IDs)
+      const newSongs = queue.filter(s => !prevQueueIdsRef.current.has(s.id))
+      prevQueueIdsRef.current = new Set(queue.map(s => s.id))
+      autoSaveSongs(newSongs)
     }
     function onHistoryUpdated({ history }) {
       dispatch({ type: 'HISTORY_UPDATED', history })
@@ -297,36 +325,30 @@ export default function Room() {
   }
 
   function downloadPlaylist() {
-    const lines = []
-    const date = new Date().toLocaleString()
-    lines.push(`🎵 Music Room – Room ${code}`)
-    lines.push(`Exported: ${date}`)
-    lines.push('='.repeat(44))
-    if (history.length) {
-      lines.push('\nPlayed:')
-      history.forEach((s, i) => {
+    // Merge localStorage auto-saved + current session — dedupe by id/url
+    let saved = []
+    try { saved = JSON.parse(localStorage.getItem(`music-playlist-${code}`) || '[]') } catch {}
+    const seen = new Set()
+    const allSongs = [...saved, ...history, ...(currentSong ? [currentSong] : []), ...queue]
+      .filter(s => { const k = s.id || s.url; if (!k || seen.has(k)) return false; seen.add(k); return true })
+    const lines = [
+      `🎵 Music Room – Room ${code}`,
+      `Exported: ${new Date().toLocaleString()}`,
+      '='.repeat(44)
+    ]
+    if (allSongs.length) {
+      lines.push('\nAll Songs (auto-saved):')
+      allSongs.forEach((s, i) => {
         lines.push(`  ${i + 1}. ${s.title}`)
         if (s.url) lines.push(`     ${s.url}`)
       })
+    } else {
+      lines.push('\nNo songs added yet.')
     }
-    if (currentSong) {
-      lines.push('\nNow Playing:')
-      lines.push(`  ${currentSong.title}`)
-      if (currentSong.url) lines.push(`  ${currentSong.url}`)
-    }
-    if (queue.length) {
-      lines.push('\nUp Next:')
-      queue.forEach((s, i) => {
-        lines.push(`  ${i + 1}. ${s.title}`)
-        if (s.url) lines.push(`     ${s.url}`)
-      })
-    }
-    const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
+    a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/plain' }))
     a.download = `music-room-${code}-${Date.now()}.txt`
-    a.click()
-    URL.revokeObjectURL(a.href)
+    a.click(); URL.revokeObjectURL(a.href)
   }
 
   if (!room || !user) return null
@@ -395,10 +417,15 @@ export default function Room() {
           {/* Export playlist */}
           <button
             onClick={downloadPlaylist}
-            title="Download playlist (.txt)"
-            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-base transition-colors"
+            title={savedCount ? `Download playlist (${savedCount} songs auto-saved)` : 'Download playlist'}
+            className="w-8 h-8 flex items-center justify-center bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-lg text-base transition-colors relative"
           >
             💾
+            {savedCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] font-bold px-1 rounded-full leading-none py-0.5">
+                {savedCount > 99 ? '99+' : savedCount}
+              </span>
+            )}
           </button>
 
           <span className="hidden sm:inline">👥 {room.users?.length ?? 0}</span>
