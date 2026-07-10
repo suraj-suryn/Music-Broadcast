@@ -56,6 +56,7 @@ export default function Home() {
     if (mode === 'create') {
       socket.once('room-created', ({ roomCode, user, room }) => {
         socket.off('error', onError)
+        sessionStorage.setItem('music-room', JSON.stringify({ roomCode, userName: trimName }))
         dispatch({ type: 'SET_ROOM', room, user, currentTime: 0 })
         navigate(`/room/${roomCode}`)
       })
@@ -63,6 +64,7 @@ export default function Home() {
     } else {
       socket.once('room-joined', ({ room, user, currentTime }) => {
         socket.off('error', onError)
+        sessionStorage.setItem('music-room', JSON.stringify({ roomCode: room.code, userName: trimName }))
         dispatch({ type: 'SET_ROOM', room, user, currentTime })
         navigate(`/room/${room.code}`)
       })

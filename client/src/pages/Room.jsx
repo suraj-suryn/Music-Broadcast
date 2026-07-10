@@ -77,9 +77,18 @@ export default function Room() {
   }, [])
 
   useEffect(() => {
-    // Redirect if no room state (e.g. page refresh)
+    // On page reload (iOS/Android kills tab): React state is lost but URL is preserved.
+    // Try to silently rejoin from sessionStorage before sending user to Home.
     if (!room || !user) {
-      navigate('/', { replace: true })
+      const saved = JSON.parse(sessionStorage.getItem('music-room') || 'null')
+      if (saved?.roomCode === code && saved?.userName) {
+        reconnectingRef.current = true
+        setReconnecting(true)
+        if (!socket.connected) socket.connect()
+        socket.emit('join-room', { roomCode: saved.roomCode, name: saved.userName })
+      } else {
+        navigate('/', { replace: true })
+      }
       return
     }
 
@@ -135,9 +144,10 @@ export default function Room() {
     }
     function onError({ message }) {
       if (reconnectingRef.current) {
-        // Reconnect failed (room gone) → go home
+        // Reconnect failed (room gone) → clear saved session and go home
         reconnectingRef.current = false
         setReconnecting(false)
+        sessionStorage.removeItem('music-room')
         navigate('/', { replace: true })
         return
       }
@@ -157,10 +167,12 @@ export default function Room() {
       if (!reconnectingRef.current) return
       reconnectingRef.current = false
       setReconnecting(false)
-      dispatch({ type: 'SET_ROOM', room: roomData, user: userData, currentTime })
+      // Refresh saved session with latest name (may have been renamed)
+      sessionStorage.setItem('music-room', JSON.stringify({ roomCode: roomData.code, userName: userData.name }))\n      dispatch({ type: 'SET_ROOM', room: roomData, user: userData, currentTime })
       playerRef.current?.applySync({ playing: roomData.playing, currentTime, timestamp: Date.now(), song: roomData.currentSong })
     }
     function onKicked() {
+      sessionStorage.removeItem('music-room')
       navigate('/', { replace: true, state: { kicked: true } })
     }
     function onVisibilityChange() {
