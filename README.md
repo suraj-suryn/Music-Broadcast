@@ -15,15 +15,21 @@ A real-time collaborative music room — create a room, share the code, and list
 
 ### Room & Controls
 - **Room system** — 6-character shareable room code; no login required
-- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat cycle
+- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat cycle / Co-DJ toggle
 - **Keyboard shortcuts** — `Space` play/pause, `→` next, `R` repeat cycle (host only; blocked while typing)
 - **Guest song suggestions** — guests search and suggest songs; host sees a 💡 panel with approve ✓ / reject ✕ per suggestion; suggestions update live for everyone
+- **Co-DJ mode** — host toggles 🎧 to let guests add songs directly to the queue (no approval needed); one click switches between suggestion mode and open queue
 - **Manual host transfer** — host taps 👑 next to any user to hand over control
 - **Kick user** — host can tap 🚫 next to any user to remove them; kicked user is redirected home with a message
+- **Rename yourself** — any user can tap ✏️ next to their own name to change their display name mid-session
 - **Vote to skip** — guests vote; majority auto-skips
 - **Host restore** — if the host leaves or reloads, the next user becomes temp host; original host gets control back automatically when they rejoin with the same name
 - **Auto-reconnect** — brief network drop shows "Reconnecting…" overlay; auto-rejoins and re-syncs without navigating away
-- **Live chat** — two-way chat; host and all guests can type; unread badge
+- **Live chat** — two-way chat; host and all guests can type; unread badge; message notification toast appears when sidebar is closed
+
+### Reactions & Social
+- **Emoji reactions** — 😊 😢 😭 😡 🔥 ❤️ 👏 😂 reaction bar below the player; click any emoji → it floats up for all users in real time; ephemeral, no storage
+- **Message notification toast** — when a chat message arrives while sidebar is closed, a clickable toast shows sender name + message at bottom-left
 
 ### Invite & Sharing
 - **Invite link** — one-tap copy of a full join URL (`?join=ROOMCODE`)
@@ -35,16 +41,19 @@ A real-time collaborative music room — create a room, share the code, and list
 ### Queue
 - **Queue reorder** — host can reorder queued songs with ▲ ▼ buttons
 - **Queue loop mode** — included in the repeat cycle (Repeat All)
-- **Song deduplication** — search results clear after adding so the screen stays clean
+- **Song deduplication** — ⚠️ warning if you try to add a song already in the queue or playing
+- **Search clears after adding** — search results hide after a song is added, keeping the screen clean
 
 ### Player UI
 - **Now-playing toast** — brief `▶ Song Title` notification when track changes
+- **Volume slider** — 🔈──🔊 range slider in the uploaded audio player (your device only, not synced)
 - **Minimize / Restore / Maximize / Fullscreen** — size controls on the video overlay
 - **Responsive layout** — auto-adapts to phone, tablet, and desktop; chat sidebar starts closed (open with 💬), slides in as overlay on all screen sizes
 
 ### Network
 - **LAN mode** — share your IP on the same Wi-Fi; zero config
 - **Tunnel mode** — Cloudflare Tunnel for internet access; free, no bandwidth limits, WebSocket-compatible
+- **LAN/Public toggle** — 📶/🌐 button in room header switches invite links between LAN IP and tunnel URL (only shown when tunnel is configured)
 - **Auto-tunnel scripts** — `start-tunnel.ps1` (Windows) and `start-tunnel.sh` (Android/Termux) auto-capture the tunnel URL and update config — no manual editing needed
 - **Restart scripts** — `restart-server.ps1/.sh` restart only the server when code changes; tunnel keeps running uninterrupted
 - **Mobile server** — run the server on an Android phone using Termux
@@ -150,11 +159,13 @@ Run `npm start` — share the tunnel URL with anyone on the internet.
 2. Enter a display name → **Create Room** to get a 6-character code
 3. Share the code (or the invite link via 🔗 / QR via 📱) with friends
 4. **Host:** search YouTube, paste a URL, or upload an audio file → ▶ to play
-5. **Guests:** search and suggest songs (host approves 💡), vote to skip, chat
-6. **Seek:** drag the progress bar to jump to any position (host only)
-7. **Repeat:** click 🔁 to cycle Off → Repeat All → Repeat One
-8. **Export:** click 💾 anytime to save the session's songs as a `.txt` file
-9. **Import:** use the 📋 tab in Add Song to load a saved `.txt` playlist
+5. **Guests:** search and suggest songs (host approves 💡), vote to skip, react with emojis, chat
+6. **Co-DJ:** host clicks 🎧 to let everyone add songs directly — no approval needed
+7. **Seek:** drag the progress bar to jump to any position (host only)
+8. **Repeat:** click 🔁 to cycle Off → Repeat All → Repeat One
+9. **Rename:** tap ✏️ next to your name in the user list to change it
+10. **Export:** click 💾 anytime to save the session's songs as a `.txt` file
+11. **Import:** use the 📋 tab in Add Song to load a saved `.txt` playlist
 
 ### Keyboard shortcuts (host only, blocked while typing in chat/inputs)
 
@@ -209,10 +220,11 @@ Music-Broadcast/
 │   ├── vite.config.js         # reads network.config.json
 │   └── src/
 │       ├── pages/             # Home.jsx (invite link support), Room.jsx
-│       ├── components/        # MusicPlayer, Controls (seek bar, repeat cycle),
+│       ├── components/        # MusicPlayer, Controls (seek bar, repeat cycle, Co-DJ),
 │       │                      # Queue (reorder), AddSong (search/URL/upload/import),
-│       │                      # Suggestions (host approval panel), Chat,
-│       │                      # UserList (host transfer + kick), VoteSkip
+│       │                      # Suggestions (host approval + co-DJ panel), Chat,
+│       │                      # UserList (host transfer + kick + rename),
+│       │                      # VoteSkip, ReactionBar (emoji reactions)
 │       ├── context/           # RoomContext.jsx
 │       └── socket.js          # Socket.io client
 └── server/                    # Node.js backend
