@@ -279,6 +279,19 @@ module.exports = function registerHandlers(io, socket) {
     io.to(room.code).emit('user-joined', { users: room.users, hostRestored: false });
   });
 
+  // ── Jump to Song (host only) ─────────────────────────────
+  // Skips all songs before the chosen one and starts it immediately
+  socket.on('jump-to-song', ({ songId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    const idx = room.queue.findIndex(s => s.id === songId);
+    if (idx === -1) return;
+    room.queue.splice(0, idx); // drop everything before the chosen song
+    advanceSong(io, room);
+  });
+
   // ── Reorder Queue (host only) ─────────────────────────────
   socket.on('reorder-queue', ({ fromIndex, toIndex } = {}) => {
     const room = getRoomBySocket(socket.id);

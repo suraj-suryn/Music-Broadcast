@@ -36,9 +36,18 @@ export default function Queue({ queue = [], isHost }) {
               </div>
             )}
 
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white truncate">{song.title}</p>
+            {/* Info — clickable by host to play immediately */}
+            <div
+              className={`flex-1 min-w-0 ${isHost ? 'cursor-pointer group/play' : ''}`}
+              onClick={isHost ? () => socket.emit('jump-to-song', { songId: song.id }) : undefined}
+              title={isHost ? 'Click to play now' : undefined}
+            >
+              <div className="flex items-center gap-1 min-w-0">
+                {isHost && (
+                  <span className="text-indigo-400 opacity-0 group-hover/play:opacity-100 transition-opacity text-xs shrink-0">▶</span>
+                )}
+                <p className="text-sm text-white truncate group-hover/play:text-indigo-300 transition-colors">{song.title}</p>
+              </div>
               <p className="text-xs text-gray-500 capitalize">{song.source}</p>
             </div>
 
