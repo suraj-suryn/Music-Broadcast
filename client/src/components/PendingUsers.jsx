@@ -61,6 +61,11 @@ export default function PendingUsers({ pendingUsers = [], requireApproval, isHos
           </ul>
         )
       )}
+      {!requireApproval && (
+        <p className="px-4 py-3 text-gray-600 text-xs text-center">
+          Anyone with the code can join — enable approval to review each person, or set a room password
+        </p>
+      )}
     </div>
   )
 }

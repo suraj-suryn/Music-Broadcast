@@ -86,8 +86,42 @@ export default function Room() {
   const msgNotifTimerRef = useRef(null)
 
   // ── Join/leave notification ────────────────────────────
-  const [joinNotif, setJoinNotif] = useState(null) // string e.g. "👋 Suraj joined"
+  const [joinNotif, setJoinNotif] = useState(null)
   const joinNotifTimerRef = useRef(null)
+
+  // ── Skip announcement ──────────────────────────────────
+  const [skipNotif, setSkipNotif] = useState(null) // { title, by }
+  const skipNotifTimerRef = useRef(null)
+  useEffect(() => {
+    function onSongSkipped({ title, by }) {
+      clearTimeout(skipNotifTimerRef.current)
+      setSkipNotif({ title, by })
+      skipNotifTimerRef.current = setTimeout(() => setSkipNotif(null), 2500)
+    }
+    socket.on('song-skipped', onSongSkipped)
+    return () => socket.off('song-skipped', onSongSkipped)
+  }, [])
+
+  // ── Sleep timer (host only, client-side countdown) ──────
+  const [sleepMinutes, setSleepMinutes] = useState(0) // 0 = off
+  const [sleepRemaining, setSleepRemaining] = useState(0)
+  const [showSleepMenu, setShowSleepMenu] = useState(false)
+  useEffect(() => {
+    if (!sleepMinutes) return
+    setSleepRemaining(sleepMinutes * 60)
+    const t = setInterval(() => {
+      setSleepRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(t)
+          socket.emit('pause')
+          setSleepMinutes(0)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(t)
+  }, [sleepMinutes])
 
   // ── Emoji reactions ────────────────────────────────────
   const [reactions, setReactions] = useState([])
@@ -451,6 +485,43 @@ export default function Room() {
             )}
           </button>
 
+          {/* Sleep timer (host only) */}
+          {isHost && (
+            <div className="relative">
+              <button
+                onClick={() => setShowSleepMenu(m => !m)}
+                title={sleepRemaining > 0 ? `Sleep in ${Math.floor(sleepRemaining/60)}:${String(sleepRemaining%60).padStart(2,'0')}` : 'Sleep timer'}
+                className={`flex items-center gap-1 px-2 h-8 rounded-lg border text-xs transition-colors ${
+                  sleepRemaining > 0
+                    ? 'bg-indigo-600 border-indigo-500 text-white'
+                    : 'bg-gray-800 hover:bg-gray-700 border-gray-700 text-gray-400 hover:text-white'
+                }`}
+              >
+                ⏰
+                {sleepRemaining > 0 && (
+                  <span className="font-mono tabular-nums">
+                    {Math.floor(sleepRemaining/60)}:{String(sleepRemaining%60).padStart(2,'0')}
+                  </span>
+                )}
+              </button>
+              {showSleepMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-gray-800 border border-gray-700 rounded-xl shadow-xl z-50 py-1 min-w-[130px]">
+                  {[0, 5, 10, 15, 30, 60].map(m => (
+                    <button
+                      key={m}
+                      onClick={() => { setSleepMinutes(m); setShowSleepMenu(false) }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                        sleepMinutes === m ? 'text-indigo-400' : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      }`}
+                    >
+                      {m === 0 ? 'Off' : `${m} minutes`}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <span className="hidden sm:inline">👥 {room.users?.length ?? 0}</span>
           <span className="sm:hidden text-xs">{room.users?.length ?? 0}</span>
           {isHost && (
@@ -573,6 +644,14 @@ export default function Room() {
       {joinNotif && (
         <div className="fixed bottom-16 left-4 z-50 bg-gray-800/95 text-white text-sm px-4 py-2 rounded-xl shadow-xl pointer-events-none">
           {joinNotif}
+        </div>
+      )}
+
+      {/* Skip announcement toast */}
+      {skipNotif && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-gray-800/95 text-white text-sm px-4 py-2.5 rounded-xl shadow-xl pointer-events-none max-w-[260px]">
+          <span className="text-gray-400 shrink-0">⏭</span>
+          <span className="truncate"><span className="font-semibold">{skipNotif.by === 'vote' ? 'Vote' : skipNotif.by}</span> skipped <span className="text-gray-300 italic">{skipNotif.title}</span></span>
         </div>
       )}
 

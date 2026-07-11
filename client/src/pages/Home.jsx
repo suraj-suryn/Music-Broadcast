@@ -187,6 +187,11 @@ export default function Home() {
                   onChange={e => setPassword(e.target.value)}
                   className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder-gray-600"
                 />
+                {mode === 'create' && (
+                  <p className="text-gray-600 text-xs mt-1.5">
+                    💡 Tip: also enable <span className="text-gray-400">Join Approval</span> inside the room for full control
+                  </p>
+                )}
               </div>
             )}
 

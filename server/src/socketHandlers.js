@@ -201,7 +201,44 @@ module.exports = function registerHandlers(io, socket) {
     const user = room.users.find(u => u.id === socket.id);
     if (!user?.isHost) return;
 
+    // Announce skip to everyone
+    if (room.currentSong) {
+      io.to(room.code).emit('song-skipped', { title: room.currentSong.title, by: user.name });
+    }
     advanceSong(io, room);
+  });
+
+  // ── Shuffle Queue (host only) ────────────────────────────
+  socket.on('shuffle-queue', () => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    for (let i = room.queue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [room.queue[i], room.queue[j]] = [room.queue[j], room.queue[i]];
+    }
+    io.to(room.code).emit('queue-updated', { queue: room.queue });
+  });
+
+  // ── Play Previous (host only) ────────────────────────────
+  socket.on('play-previous', () => {
+    const room = getRoomBySocket(socket.id);
+    if (!room || !room.previousSong) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+
+    // Push current song back to front of queue, play previous
+    if (room.currentSong) room.queue.unshift({ ...room.currentSong });
+    room.currentSong = room.previousSong;
+    room.previousSong = null;
+    room.playing = true;
+    room.playedSeconds = 0;
+    room.startedAt = Date.now();
+    room.voteSkips.clear();
+
+    io.to(room.code).emit('playback-sync', { playing: true, currentTime: 0, timestamp: room.startedAt, song: room.currentSong });
+    io.to(room.code).emit('queue-updated', { queue: room.queue });
   });
 
   // ── Song Ended (any client) ──────────────────────────────
@@ -457,6 +494,9 @@ module.exports = function registerHandlers(io, socket) {
 
 // ── Helper ───────────────────────────────────────────────────
 function advanceSong(io, room) {
+  // Save to previousSong for ⏮️ go-back
+  if (room.currentSong) room.previousSong = room.currentSong;
+
   // Archive the finishing song to history
   if (room.currentSong) {
     room.history.push({ ...room.currentSong, playedAt: Date.now() });

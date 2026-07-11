@@ -37,6 +37,15 @@ export default function Controls({ playing, currentSong, repeat, queueMode, curr
     <div className="flex flex-col gap-1.5 flex-1 min-w-0">
       {/* ── Button row ── */}
       <div className="flex items-center gap-3">
+        {/* Previous song */}
+        <button
+          onClick={() => socket.emit('play-previous')}
+          className="w-9 h-9 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-full transition-colors text-white shrink-0 text-base"
+          title="Previous song"
+        >
+          ⏮
+        </button>
+
         {/* Play / Pause */}
         <button
           onClick={() => socket.emit(playing ? 'pause' : 'play')}
@@ -53,6 +62,15 @@ export default function Controls({ playing, currentSong, repeat, queueMode, curr
           title="Skip to next song"
         >
           ⏭
+        </button>
+
+        {/* Shuffle queue */}
+        <button
+          onClick={() => socket.emit('shuffle-queue')}
+          className="w-9 h-9 flex items-center justify-center bg-gray-700 hover:bg-gray-600 rounded-full transition-colors text-white shrink-0 text-base"
+          title="Shuffle queue"
+        >
+          🔀
         </button>
 
         {/* Repeat cycle: Off → All → One → Off */}
