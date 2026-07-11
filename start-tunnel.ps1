@@ -92,6 +92,6 @@ try {
 finally {
     Write-Host "`nStopping cloudflared tunnel..." -ForegroundColor Yellow
     Stop-Process -Id $cfProc.Id -Force -ErrorAction SilentlyContinue
-    Write-Host "Done." -ForegroundColor DarkGray
+    Write-Host ('Done.') -ForegroundColor DarkGray
 }
 
