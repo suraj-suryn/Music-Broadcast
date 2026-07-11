@@ -3,6 +3,7 @@ import { socket } from '../socket.js'
 
 export default function UserList({ users = [], currentUser }) {
   const amHost = currentUser?.isHost
+  const amCreator = currentUser?.isCreator
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
 
@@ -48,7 +49,15 @@ export default function UserList({ users = [], currentUser }) {
                   <span className={`truncate flex-1 ${isMe ? 'text-white' : 'text-gray-200'}`}>
                     {u.name}{isMe && <span className="text-gray-600 text-xs ml-1">(you)</span>}
                   </span>
-                  {u.isHost && <span className="text-yellow-400 text-xs" title="Host">👑</span>}
+
+                  {/* Role badges */}
+                  {u.isCreator && (
+                    <span className="text-yellow-400 text-xs shrink-0" title="Room creator">👑</span>
+                  )}
+                  {u.isHost && !u.isCreator && (
+                    <span className="text-indigo-400 text-xs shrink-0" title="Co-host">🎧</span>
+                  )}
+
                   {/* Rename own name */}
                   {isMe && (
                     <button
@@ -57,19 +66,34 @@ export default function UserList({ users = [], currentUser }) {
                       className="text-gray-600 hover:text-indigo-400 text-xs transition-colors shrink-0"
                     >✏️</button>
                   )}
-                  {/* Host-only: transfer + kick non-host users */}
-                  {amHost && !u.isHost && (
+
+                  {/* Host actions on OTHER users */}
+                  {amHost && !isMe && (
                     <>
-                      <button
-                        onClick={() => socket.emit('transfer-host', { toUserId: u.id })}
-                        title={`Make ${u.name} the host`}
-                        className="text-gray-600 hover:text-yellow-400 text-xs transition-colors shrink-0"
-                      >👑</button>
-                      <button
-                        onClick={() => { if (window.confirm(`Remove ${u.name} from the room?`)) socket.emit('kick-user', { userId: u.id }) }}
-                        title={`Kick ${u.name}`}
-                        className="text-gray-600 hover:text-red-400 text-xs transition-colors shrink-0"
-                      >🚫</button>
+                      {/* Share control with a guest */}
+                      {!u.isHost && (
+                        <button
+                          onClick={() => socket.emit('share-control', { toUserId: u.id })}
+                          title={`Share control with ${u.name}`}
+                          className="text-gray-600 hover:text-yellow-400 text-xs transition-colors shrink-0"
+                        >👑</button>
+                      )}
+                      {/* Revoke control from a co-host (not creator) */}
+                      {u.isHost && !u.isCreator && (
+                        <button
+                          onClick={() => socket.emit('revoke-control', { fromUserId: u.id })}
+                          title={`Revoke control from ${u.name}`}
+                          className="text-gray-600 hover:text-orange-400 text-xs transition-colors shrink-0"
+                        >↩</button>
+                      )}
+                      {/* Kick non-host or non-creator users */}
+                      {!u.isCreator && (
+                        <button
+                          onClick={() => { if (window.confirm(`Remove ${u.name} from the room?`)) socket.emit('kick-user', { userId: u.id }) }}
+                          title={`Kick ${u.name}`}
+                          className="text-gray-600 hover:text-red-400 text-xs transition-colors shrink-0"
+                        >🚫</button>
+                      )}
                     </>
                   )}
                 </>

@@ -11,7 +11,7 @@ function createRoom(socket, hostName) {
   let code;
   do { code = generateCode(); } while (rooms.has(code));
 
-  const host = { id: socket.id, name: hostName, isHost: true };
+  const host = { id: socket.id, name: hostName, isHost: true, isCreator: true };
   const room = {
     code,
     originalHostName: hostName, // persists so host can be restored on rejoin
@@ -43,11 +43,11 @@ function joinRoom(code, socketId, name) {
     name.trim().toLowerCase() === room.originalHostName.toLowerCase();
 
   if (isRestoredHost) {
-    // Demote whoever is currently acting as temp host
-    room.users.forEach(u => { u.isHost = false; });
+    // Demote all temp hosts (keep non-temp co-hosts if any)
+    room.users.forEach(u => { u.isHost = false; u.isCreator = false; });
   }
 
-  const user = { id: socketId, name, isHost: isRestoredHost };
+  const user = { id: socketId, name, isHost: isRestoredHost, isCreator: isRestoredHost };
   room.users.push(user);
   return { room, user, hostRestored: isRestoredHost };
 }

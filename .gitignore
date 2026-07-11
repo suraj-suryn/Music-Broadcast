@@ -3,3 +3,5 @@ uploads/
 dist/
 .env
 *.log
+cloudflared.exe
+cloudflared

@@ -181,8 +181,8 @@ module.exports = function registerHandlers(io, socket) {
     room.queueMode = mode;
     io.to(room.code).emit('queue-mode-changed', { queueMode: room.queueMode });
   });
-  // ── Transfer Host (host only) ────────────────────────────
-  socket.on('transfer-host', ({ toUserId } = {}) => {
+  // ── Share Control (any host → grants host to another user) ──
+  socket.on('share-control', ({ toUserId } = {}) => {
     const room = getRoomBySocket(socket.id);
     if (!room) return;
     const from = room.users.find(u => u.id === socket.id);
@@ -190,17 +190,28 @@ module.exports = function registerHandlers(io, socket) {
     const to = room.users.find(u => u.id === toUserId);
     if (!to || to.isHost) return;
 
-    from.isHost = false;
-    to.isHost   = true;
-    // New host now owns rejoin restoration too
-    room.originalHostName = to.name;
-    room.voteSkips.clear();
+    to.isHost = true;
+    room.voteSkips.delete(toUserId);
 
+    io.to(room.code).emit('user-joined', { users: room.users, hostRestored: false });
     io.to(room.code).emit('host-transferred', {
       users:        room.users,
       newHostName:  to.name,
-      prevHostName: from.name
+      prevHostName: null  // null signals "shared" not "transferred"
     });
+  });
+
+  // ── Revoke Control (any host → removes host from a non-creator) ──
+  socket.on('revoke-control', ({ fromUserId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const requester = room.users.find(u => u.id === socket.id);
+    if (!requester?.isHost) return;
+    const target = room.users.find(u => u.id === fromUserId);
+    if (!target || !target.isHost || target.isCreator) return; // can't revoke creator
+
+    target.isHost = false;
+    io.to(room.code).emit('user-joined', { users: room.users, hostRestored: false });
   });
 
   // ── Reorder Queue (host only) ─────────────────────────────

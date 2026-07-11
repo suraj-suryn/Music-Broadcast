@@ -162,9 +162,12 @@ export default function Room() {
     function onRepeatChanged({ repeat }) {
       dispatch({ type: 'SET_REPEAT', repeat })
     }
-    function onHostTransferred({ users, newHostName }) {
+    function onHostTransferred({ users, newHostName, prevHostName }) {
       dispatch({ type: 'USERS_UPDATED', users })
-      dispatch({ type: 'SET_INFO', message: `👑 ${newHostName} is now the host` })
+      const msg = prevHostName
+        ? `👑 ${newHostName} is now the host`
+        : `👑 Control shared with ${newHostName}`
+      dispatch({ type: 'SET_INFO', message: msg })
       setTimeout(() => dispatch({ type: 'CLEAR_INFO' }), 4000)
     }
     function onQueueModeChanged({ queueMode }) {
@@ -432,8 +435,12 @@ export default function Room() {
           <span className="hidden sm:inline">👥 {room.users?.length ?? 0}</span>
           <span className="sm:hidden text-xs">{room.users?.length ?? 0}</span>
           {isHost && (
-            <span className="bg-yellow-500/20 text-yellow-400 text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium">
-              Host
+            <span className={`text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium ${
+              user?.isCreator
+                ? 'bg-yellow-500/20 text-yellow-400'
+                : 'bg-indigo-500/20 text-indigo-400'
+            }`}>
+              {user?.isCreator ? '👑 Creator' : '🎧 Co-host'}
             </span>
           )}
           {/* Chat toggle — all screen sizes */}
