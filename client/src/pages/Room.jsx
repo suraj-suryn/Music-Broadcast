@@ -196,7 +196,8 @@ export default function Room() {
       reconnectingRef.current = false
       setReconnecting(false)
       // Refresh saved session with latest name (may have been renamed)
-      sessionStorage.setItem('music-room', JSON.stringify({ roomCode: roomData.code, userName: userData.name }))\n      dispatch({ type: 'SET_ROOM', room: roomData, user: userData, currentTime })
+      sessionStorage.setItem('music-room', JSON.stringify({ roomCode: roomData.code, userName: userData.name }))
+      dispatch({ type: 'SET_ROOM', room: roomData, user: userData, currentTime })
       playerRef.current?.applySync({ playing: roomData.playing, currentTime, timestamp: Date.now(), song: roomData.currentSong })
     }
     function onKicked() {
