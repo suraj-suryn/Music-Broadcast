@@ -12,6 +12,8 @@ const initialState = {
   chat: [],
   history: [],
   suggestions: [],
+  pendingUsers: [],
+  requireApproval: false,
   votes: { votes: 0, total: 0, threshold: 0 },
   error: null,
   info: null,
@@ -37,6 +39,8 @@ function reducer(state, action) {
         chat: action.room.chat || [],
         history: action.room.history || [],
         suggestions: action.room.suggestions || [],
+        pendingUsers: action.room.pendingUsers || [],
+        requireApproval: action.room.requireApproval || false,
         votes: { votes: 0, total: 0, threshold: 0 },
         error: null
       }
@@ -93,6 +97,12 @@ function reducer(state, action) {
 
     case 'SET_CODJ_MODE':
       return { ...state, coDjMode: action.coDjMode }
+
+    case 'PENDING_USERS_UPDATED':
+      return { ...state, pendingUsers: action.pendingUsers }
+
+    case 'SET_REQUIRE_APPROVAL':
+      return { ...state, requireApproval: action.requireApproval }
 
     default:
       return state

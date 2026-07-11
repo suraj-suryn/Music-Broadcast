@@ -4,6 +4,7 @@ const {
   joinRoom,
   leaveRoom,
   getRoomBySocket,
+  getRoom,
   getCurrentTime,
   serializeRoom
 } = require('./rooms');
@@ -11,20 +12,39 @@ const {
 module.exports = function registerHandlers(io, socket) {
 
   // ── Create Room ──────────────────────────────────────────
-  socket.on('create-room', ({ name } = {}) => {
+  socket.on('create-room', ({ name, password = '' } = {}) => {
     if (!name || !name.trim()) return socket.emit('error', { message: 'Name is required' });
 
     const { room, user } = createRoom(socket, name.trim());
+    room.password = password.trim();
     socket.join(room.code);
     socket.emit('room-created', { roomCode: room.code, user, room: serializeRoom(room) });
   });
 
   // ── Join Room ────────────────────────────────────────────
-  socket.on('join-room', ({ roomCode, name } = {}) => {
+  socket.on('join-room', ({ roomCode, name, password = '' } = {}) => {
     if (!name || !name.trim()) return socket.emit('error', { message: 'Name is required' });
     if (!roomCode || !roomCode.trim()) return socket.emit('error', { message: 'Room code is required' });
 
-    const result = joinRoom(roomCode.trim().toUpperCase(), socket.id, name.trim());
+    const code = roomCode.trim().toUpperCase();
+    const preRoom = getRoom(code);
+    if (!preRoom) return socket.emit('error', { message: 'Room not found' });
+
+    // Check password
+    if (preRoom.password && preRoom.password !== password.trim()) {
+      return socket.emit('error', { message: 'Wrong password', needsPassword: true });
+    }
+
+    // Approval gate — skip for original host rejoin
+    const isRestoredHost = name.trim().toLowerCase() === preRoom.originalHostName.toLowerCase();
+    if (preRoom.requireApproval && !isRestoredHost) {
+      preRoom.pendingUsers.push({ socketId: socket.id, name: name.trim(), requestedAt: Date.now() });
+      socket.emit('join-request-received', { roomCode: code });
+      io.to(code).emit('pending-users-updated', { pendingUsers: preRoom.pendingUsers });
+      return;
+    }
+
+    const result = joinRoom(code, socket.id, name.trim());
     if (result.error) return socket.emit('error', { message: result.error });
 
     const { room, user, hostRestored } = result;
@@ -32,8 +52,53 @@ module.exports = function registerHandlers(io, socket) {
 
     const currentTime = getCurrentTime(room);
     socket.emit('room-joined', { room: serializeRoom(room), user, currentTime });
-    // Notify existing users — pass hostRestored so they can show a toast
-    socket.to(room.code).emit('user-joined', { users: room.users, hostRestored });
+    // Notify existing users — include joinerName for join toast
+    socket.to(room.code).emit('user-joined', { users: room.users, hostRestored, joinerName: hostRestored ? null : user.name });
+  });
+
+  // ── Approve Join (host only) ─────────────────────────────
+  socket.on('approve-join', ({ socketId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const host = room.users.find(u => u.id === socket.id);
+    if (!host?.isHost) return;
+    const idx = room.pendingUsers.findIndex(p => p.socketId === socketId);
+    if (idx === -1) return;
+
+    const [pending] = room.pendingUsers.splice(idx, 1);
+    io.to(room.code).emit('pending-users-updated', { pendingUsers: room.pendingUsers });
+
+    const result = joinRoom(room.code, pending.socketId, pending.name);
+    if (result.error) { io.to(pending.socketId).emit('join-rejected', { reason: result.error }); return; }
+
+    const { user, hostRestored } = result;
+    const targetSocket = io.sockets.sockets.get(pending.socketId);
+    if (targetSocket) targetSocket.join(room.code);
+
+    const currentTime = getCurrentTime(room);
+    io.to(pending.socketId).emit('room-joined', { room: serializeRoom(room), user, currentTime });
+    socket.to(room.code).emit('user-joined', { users: room.users, hostRestored: false, joinerName: user.name });
+  });
+
+  // ── Reject Join (host only) ──────────────────────────────
+  socket.on('reject-join', ({ socketId } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const host = room.users.find(u => u.id === socket.id);
+    if (!host?.isHost) return;
+    room.pendingUsers = room.pendingUsers.filter(p => p.socketId !== socketId);
+    io.to(socketId).emit('join-rejected', { reason: 'The host declined your request.' });
+    io.to(room.code).emit('pending-users-updated', { pendingUsers: room.pendingUsers });
+  });
+
+  // ── Set Require Approval (host only) ────────────────────
+  socket.on('set-require-approval', ({ enabled } = {}) => {
+    const room = getRoomBySocket(socket.id);
+    if (!room) return;
+    const user = room.users.find(u => u.id === socket.id);
+    if (!user?.isHost) return;
+    room.requireApproval = !!enabled;
+    io.to(room.code).emit('require-approval-changed', { requireApproval: room.requireApproval });
   });
 
   // ── Add to Queue (host, or any user in co-DJ mode) ──────

@@ -6,9 +6,12 @@ import { useRoom } from '../context/RoomContext.jsx'
 export default function Home() {
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPasswordField, setShowPasswordField] = useState(false)
   const [mode, setMode] = useState('create') // 'create' | 'join'
-  const [joinLocked, setJoinLocked] = useState(false) // true when ?join= param present
+  const [joinLocked, setJoinLocked] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [waitingApproval, setWaitingApproval] = useState(false)
   const [error, setError] = useState('')
   const { dispatch } = useRoom()
   const navigate = useNavigate()
@@ -46,9 +49,11 @@ export default function Home() {
 
     if (!socket.connected) socket.connect()
 
-    const onError = ({ message }) => {
+    const onError = ({ message, needsPassword }) => {
       setError(message)
       setLoading(false)
+      setWaitingApproval(false)
+      if (needsPassword) setShowPasswordField(true)
     }
 
     socket.once('error', onError)
@@ -60,15 +65,32 @@ export default function Home() {
         dispatch({ type: 'SET_ROOM', room, user, currentTime: 0 })
         navigate(`/room/${roomCode}`)
       })
-      socket.emit('create-room', { name: trimName })
+      socket.emit('create-room', { name: trimName, password: password.trim() })
     } else {
       socket.once('room-joined', ({ room, user, currentTime }) => {
         socket.off('error', onError)
+        socket.off('join-request-received', onWaiting)
+        socket.off('join-rejected', onRejected)
         sessionStorage.setItem('music-room', JSON.stringify({ roomCode: room.code, userName: trimName }))
         dispatch({ type: 'SET_ROOM', room, user, currentTime })
         navigate(`/room/${room.code}`)
       })
-      socket.emit('join-room', { roomCode: trimCode.toUpperCase(), name: trimName })
+
+      function onWaiting() {
+        socket.off('error', onError)
+        setLoading(false)
+        setWaitingApproval(true)
+      }
+      function onRejected({ reason }) {
+        socket.off('error', onError)
+        setWaitingApproval(false)
+        setLoading(false)
+        setError(reason || 'Your request to join was declined.')
+      }
+      socket.once('join-request-received', onWaiting)
+      socket.once('join-rejected', onRejected)
+
+      socket.emit('join-room', { roomCode: trimCode.toUpperCase(), name: trimName, password: password.trim() })
     }
   }
 
@@ -152,19 +174,46 @@ export default function Home() {
               </div>
             )}
 
+            {/* Password field — shown for join when room requires it, or for create */}
+            {(showPasswordField || mode === 'create') && (
+              <div>
+                <label className="block text-sm text-gray-400 mb-1.5">
+                  {mode === 'create' ? 'Room password (optional)' : 'Room password'}
+                </label>
+                <input
+                  type="password"
+                  placeholder={mode === 'create' ? 'Leave blank for no password' : 'Enter room password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 text-white rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 transition-colors placeholder-gray-600"
+                />
+              </div>
+            )}
+
             {error && (
               <p className="text-red-400 text-sm bg-red-400/10 rounded-lg px-3 py-2">{error}</p>
             )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors mt-2"
-            >
-              {loading
-                ? 'Connecting…'
-                : mode === 'create' ? 'Create Room' : 'Join Room'}
-            </button>
+            {/* Waiting for host approval */}
+            {waitingApproval ? (
+              <div className="flex flex-col items-center gap-3 py-2">
+                <div className="w-8 h-8 border-4 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                <p className="text-indigo-300 text-sm text-center">Waiting for the host to let you in…</p>
+                <button
+                  type="button"
+                  onClick={() => { setWaitingApproval(false); setLoading(false) }}
+                  className="text-gray-500 hover:text-white text-xs transition-colors"
+                >Cancel</button>
+              </div>
+            ) : (
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors mt-2"
+              >
+                {loading ? 'Connecting…' : mode === 'create' ? 'Create Room' : 'Join Room'}
+              </button>
+            )}
           </form>
         </div>
 

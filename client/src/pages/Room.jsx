@@ -11,12 +11,13 @@ import Chat from '../components/Chat.jsx'
 import UserList from '../components/UserList.jsx'
 import VoteSkip from '../components/VoteSkip.jsx'
 import ReactionBar from '../components/ReactionBar.jsx'
+import PendingUsers from '../components/PendingUsers.jsx'
 
 export default function Room() {
   const { code } = useParams()
   const navigate = useNavigate()
   const { state, dispatch } = useRoom()
-  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat, queueMode, history, suggestions, coDjMode } = state
+  const { room, user, currentSong, playing, currentTime, queue, chat, votes, repeat, queueMode, history, suggestions, coDjMode, pendingUsers, requireApproval } = state
   const playerRef = useRef(null)
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
@@ -84,6 +85,10 @@ export default function Room() {
   const [msgNotif, setMsgNotif] = useState(null) // { name, text }
   const msgNotifTimerRef = useRef(null)
 
+  // ── Join/leave notification ────────────────────────────
+  const [joinNotif, setJoinNotif] = useState(null) // string e.g. "👋 Suraj joined"
+  const joinNotifTimerRef = useRef(null)
+
   // ── Emoji reactions ────────────────────────────────────
   const [reactions, setReactions] = useState([])
   function handleReact(emoji) {
@@ -145,16 +150,26 @@ export default function Room() {
         msgNotifTimerRef.current = setTimeout(() => setMsgNotif(null), 3500)
       }
     }
-    function onUserJoined({ users, hostRestored }) {
+    function onUserJoined({ users, hostRestored, joinerName }) {
       dispatch({ type: 'USERS_UPDATED', users })
       if (hostRestored) {
         const hostName = users.find(u => u.isHost)?.name
         dispatch({ type: 'SET_INFO', message: `👑 ${hostName} (original host) has rejoined and taken control` })
         setTimeout(() => dispatch({ type: 'CLEAR_INFO' }), 4000)
+      } else if (joinerName) {
+        clearTimeout(joinNotifTimerRef.current)
+        setJoinNotif(`👋 ${joinerName} joined`)
+        joinNotifTimerRef.current = setTimeout(() => setJoinNotif(null), 3000)
       }
     }
     function onUserLeft({ users }) {
       dispatch({ type: 'USERS_UPDATED', users })
+    }
+    function onPendingUsersUpdated({ pendingUsers }) {
+      dispatch({ type: 'PENDING_USERS_UPDATED', pendingUsers })
+    }
+    function onRequireApprovalChanged({ requireApproval }) {
+      dispatch({ type: 'SET_REQUIRE_APPROVAL', requireApproval })
     }
     function onVoteUpdated(payload) {
       dispatch({ type: 'VOTE_UPDATED', payload })
@@ -219,6 +234,8 @@ export default function Room() {
     socket.on('new-message', onNewMessage)
     socket.on('user-joined', onUserJoined)
     socket.on('user-left', onUserLeft)
+    socket.on('pending-users-updated', onPendingUsersUpdated)
+    socket.on('require-approval-changed', onRequireApprovalChanged)
     socket.on('vote-updated', onVoteUpdated)
     socket.on('repeat-changed', onRepeatChanged)
     socket.on('host-transferred', onHostTransferred)
@@ -239,6 +256,8 @@ export default function Room() {
       socket.off('new-message', onNewMessage)
       socket.off('user-joined', onUserJoined)
       socket.off('user-left', onUserLeft)
+      socket.off('pending-users-updated', onPendingUsersUpdated)
+      socket.off('require-approval-changed', onRequireApprovalChanged)
       socket.off('vote-updated', onVoteUpdated)
       socket.off('repeat-changed', onRepeatChanged)
       socket.off('host-transferred', onHostTransferred)
@@ -484,8 +503,9 @@ export default function Room() {
           {/* Emoji reaction bar — visible to all users */}
           <ReactionBar reactions={reactions} onReact={handleReact} />
 
-          {/* Scrollable area: Suggestions (host) + AddSong (all) + Queue */}
+          {/* Scrollable area: PendingUsers + Suggestions + AddSong + Queue */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
+            {isHost && <PendingUsers pendingUsers={pendingUsers} requireApproval={requireApproval} isHost={isHost} />}
             {isHost && <Suggestions suggestions={suggestions} coDjMode={coDjMode} />}
             <AddSong isHost={isHost} coDjMode={coDjMode} />
             <Queue queue={queue} isHost={isHost} />
@@ -547,6 +567,13 @@ export default function Room() {
             <p className="truncate text-xs">{msgNotif.text}</p>
           </div>
         </button>
+      )}
+
+      {/* Join notification toast */}
+      {joinNotif && (
+        <div className="fixed bottom-16 left-4 z-50 bg-gray-800/95 text-white text-sm px-4 py-2 rounded-xl shadow-xl pointer-events-none">
+          {joinNotif}
+        </div>
       )}
 
       {/* Error toast */}

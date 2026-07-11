@@ -18,6 +18,7 @@ function createRoom(socket, hostName) {
     users: [host],
     queue: [],
     currentSong: null,
+    previousSong: null, // last played song (for ⏮️ go-back)
     playing: false,
     repeat: false,
     queueMode: 'consume', // 'consume' = remove after play | 'cycle' = loop queue
@@ -27,7 +28,10 @@ function createRoom(socket, hostName) {
     chat: [],
     history: [],   // songs played this session, most-recent last, capped at 100
     suggestions: [], // pending guest song suggestions, capped at 20
-    coDjMode: false  // when true, all users can add directly to queue
+    coDjMode: false,  // when true, all users can add directly to queue
+    pendingUsers: [], // users waiting for host approval to join
+    requireApproval: false, // when true, new joins go to pendingUsers first
+    password: ''     // optional room password (empty = no password)
   };
   rooms.set(code, room);
   return { room, user: host };
@@ -107,6 +111,8 @@ function serializeRoom(room) {
     history: room.history || [],
     suggestions: room.suggestions || [],
     coDjMode: room.coDjMode || false,
+    pendingUsers: room.pendingUsers || [],
+    requireApproval: room.requireApproval || false,
     voteSkips: Array.from(room.voteSkips)
   };
 }
@@ -115,6 +121,7 @@ module.exports = {
   createRoom,
   joinRoom,
   leaveRoom,
+  getRoom,
   getRoomBySocket,
   getCurrentTime,
   serializeRoom
