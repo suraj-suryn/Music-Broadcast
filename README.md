@@ -14,21 +14,31 @@ A real-time collaborative music room — create a room, share the code, and list
 - **Background playback** — Wake Lock keeps screen on; Media Session shows controls on lock screen; silent audio keepalive survives tab switch and screen lock; auto-reconnect re-syncs on foreground return
 
 ### Room & Controls
-- **Room system** — 6-character shareable room code; no login required
-- **Host controls** — play ▶ / pause ⏸ / skip ⏭ / repeat cycle / Co-DJ toggle
+- **Room system** — 6-character shareable room code; no login required; optional password at creation
+- **Host controls** — ⏮ previous / ▶⏸ play-pause / ⏭ next / 🔀 shuffle / 🔂 repeat cycle / 🎧 Co-DJ toggle
 - **Keyboard shortcuts** — `Space` play/pause, `→` next, `R` repeat cycle (host only; blocked while typing)
+- **Sleep timer** — ⏰ button in header; auto-pauses after 5/10/15/30/60 min; countdown shown on button
+- **Skip announcement** — when a song is skipped, a brief toast shows who skipped it
+- **Jump to song** — host clicks any queued song title to start it immediately
 - **Guest song suggestions** — guests search and suggest songs; host sees a 💡 panel with approve ✓ / reject ✕ per suggestion; suggestions update live for everyone
 - **Co-DJ mode** — host toggles 🎧 to let guests add songs directly to the queue (no approval needed); one click switches between suggestion mode and open queue
-- **Manual host transfer** — host taps 👑 next to any user to hand over control
+- **Share control** — host taps 👑 next to any user to share host controls; both retain control simultaneously
+- **Revoke control** — host taps ↩ to remove co-host status from any non-creator user
 - **Kick user** — host can tap 🚫 next to any user to remove them; kicked user is redirected home with a message
 - **Rename yourself** — any user can tap ✏️ next to their own name to change their display name mid-session
 - **Vote to skip** — guests vote; majority auto-skips
 - **Host restore** — if the host leaves or reloads, the next user becomes temp host; original host gets control back automatically when they rejoin with the same name
-- **Auto-reconnect** — brief network drop shows "Reconnecting…" overlay; auto-rejoins and re-syncs without navigating away
+- **Auto-reconnect** — brief network drop shows "Reconnecting…" overlay; auto-rejoins and re-syncs without navigating away; rejoins even after mobile page reload
 - **Live chat** — two-way chat; host and all guests can type; unread badge; message notification toast appears when sidebar is closed
+
+### Room Security
+- **Room password** — optional password at creation; blocks anyone who doesn't know it
+- **Join Approval** — host toggles 🚪 to review each person before they enter; approved/rejected individually
+- **Creator badge** — room creator (👑) cannot be kicked or have controls revoked; always has the highest authority
 
 ### Reactions & Social
 - **Emoji reactions** — 😊 😢 😭 😡 🔥 ❤️ 👏 😂 reaction bar below the player; click any emoji → it floats up for all users in real time; ephemeral, no storage
+- **Join notification** — brief toast shows when someone new enters the room
 - **Message notification toast** — when a chat message arrives while sidebar is closed, a clickable toast shows sender name + message at bottom-left
 
 ### Invite & Sharing
@@ -153,35 +163,159 @@ Then update `network.config.json`:
 
 Run `npm start` — share the tunnel URL with anyone on the internet.
 
-## How to Use
+## User Guide
 
-1. Open the app in a browser
-2. Enter a display name → **Create Room** to get a 6-character code
-3. Share the code (or the invite link via 🔗 / QR via 📱) with friends
-4. **Host:** search YouTube, paste a URL, or upload an audio file → ▶ to play
-5. **Guests:** search and suggest songs (host approves 💡), vote to skip, react with emojis, chat
-6. **Co-DJ:** host clicks 🎧 to let everyone add songs directly — no approval needed
-7. **Seek:** drag the progress bar to jump to any position (host only)
-8. **Repeat:** click 🔁 to cycle Off → Repeat All → Repeat One
-9. **Rename:** tap ✏️ next to your name in the user list to change it
-10. **Export:** click 💾 anytime to save the session's songs as a `.txt` file
-11. **Import:** use the 📋 tab in Add Song to load a saved `.txt` playlist
+### Quick Start
 
-### Keyboard shortcuts (host only, blocked while typing in chat/inputs)
+**Create a Room (you = host)**
+1. Open the app → enter your display name → **Create Room**
+2. Optionally set a **room password** (leave blank for open access)
+3. Share via **🔗 invite link** or **📱 QR code**
+4. Add songs and press ▶ to start
+
+**Join a Room (you = guest)**
+1. Open the invite link — or tap **Join Room** → enter the 6-digit code
+2. Enter your name → **Join Room**
+3. If host has approval ON → wait for the host to let you in
+
+---
+
+### Host Controls
+
+#### Playback bar (bottom of player)
+
+| Button | Action |
+|---|---|
+| ⏮ | Previous song |
+| ▶ / ⏸ | Play / Pause |
+| ⏭ | Skip to next |
+| 🔀 | Shuffle remaining queue |
+| 🔂 | Repeat: Off → All → One → Off |
+| 🎧 | Co-DJ mode: guests add directly (no approval) |
+
+**Progress bar** — drag to seek to any position
+
+#### Header buttons
+
+| Button | Action |
+|---|---|
+| 🔗 | Copy invite link |
+| 📱 | Show QR code |
+| 💾 | Download playlist (auto-saves every song played) |
+| ⏰ | Sleep timer: auto-pause after 5/10/15/30/60 min |
+| 💬 | Open/close chat & users panel |
+
+#### Keyboard shortcuts (desktop, blocked while typing)
 
 | Key | Action |
 |---|---|
 | `Space` | Play / Pause |
-| `→` | Skip to next song |
+| `→` | Skip to next |
 | `R` | Cycle repeat mode |
 
-### Embeddable YouTube videos
+---
+
+### Adding Songs (Host & Co-DJ)
+
+| Tab | Use for |
+|---|---|
+| 🔍 Search | Search YouTube — 8 embeddable results with thumbnails |
+| 🔗 URL | Paste a YouTube URL or direct audio link (mp3/wav/ogg) |
+| 📁 Upload | Upload MP3/WAV file (max 50 MB) |
+| 📋 Import | Upload a `.txt` file of YouTube URLs — bulk-adds all |
+
+> **Auto-save**: Every song is saved to your browser's local storage as it's played. The 💾 button shows how many songs are saved and exports them all.
+
+---
+
+### Queue Management (Host)
+
+- **▲ ▼** — reorder songs
+- **✕** — remove a song
+- **Click song title** — jump to it immediately (skips everything before it)
+- **🔀** — shuffle the entire queue
+
+---
+
+### Guest Features
+
+| Feature | How |
+|---|---|
+| **Suggest a song** | Search/URL → click 💡 → host sees it and approves ✓ or rejects ✕ |
+| **Co-DJ mode** | When host enables 🎧, guests add directly — no approval |
+| **Vote to skip** | Tap ⏭ Vote Skip — majority vote skips the song |
+| **Emoji reactions** | Tap 😊😢😭😡🔥❤️👏😂 — floats on everyone's screen |
+| **Chat** | Type in the sidebar — messages shown for all |
+| **Rename** | Tap ✏️ next to your name in the user list |
+
+---
+
+### Room Security
+
+| Layer | How to set it | Best for |
+|---|---|---|
+| **Room code** | Always active | Basic access control |
+| **Password** | Set at room creation | Public/shared links |
+| **Join Approval 🚪** | Toggle in the room | Small private groups |
+
+> **Tip**: For maximum security, set a password at creation AND enable Join Approval in the room.
+
+---
+
+### User Management (Host)
+
+| Button | Action |
+|---|---|
+| **👑** next to a guest | Share host controls — both of you now have full access |
+| **↩** next to a co-host | Revoke their controls (can't revoke the room creator) |
+| **🚫** next to any user | Kick from room — they see a rejection message |
+| **✏️** next to your own name | Rename yourself |
+
+---
+
+### Mobile Tips
+
+| Platform | Recommendation |
+|---|---|
+| **Android** | Use **Chrome** — best background audio support |
+| **iPhone** | Use **Safari** — all iOS browsers are the same engine; keep screen on |
+| **All phones** | If music stops after switching apps, return to browser — it auto-resyncs |
+| **Add to Home Screen** | Tap Share → "Add to Home Screen" for a near-native app feel |
+
+> **iPhone background limitation**: YouTube audio cannot play in background on iOS — this is an Apple platform restriction. Music will resume at the correct position when you return to the browser.
+
+---
+
+### Troubleshooting
+
+| Problem | Solution |
+|---|---|
+| "This video cannot be embedded" | Owner blocked embedding — try a different version or upload MP3 |
+| Music stops on iPhone | iOS limitation — keep browser open, use Lock Screen controls |
+| Disconnected / room lost | App reconnects automatically; if room expired, ask host to recreate |
+| Search not working | YouTube API key not set in `network.config.json` |
+| Can't copy room code | Fix: run on HTTPS or localhost; LAN HTTP has clipboard restrictions |
+
+---
+
+### Playlist Persistence
+
+Songs are **auto-saved to your browser's local storage** as they're added/played — no manual action needed.
+
+- The 💾 button shows a badge with the count of saved songs
+- Click 💾 to download a `.txt` file of all songs in the session
+- Use 📋 Import tab to reload a saved playlist in any future session
+- Each room gets its own storage key — different rooms never overwrite each other
+
+---
+
+### Embeddable YouTube Videos
 
 Some videos block embedding. These always work:
 - `https://youtu.be/dQw4w9WgXcQ` — Rick Astley
 - `https://youtu.be/jfKfPfyJRdk` — Lofi Girl
 - `https://youtu.be/L_jWHffIx5E` — Smash Mouth
-- Uploaded MP3/WAV files always work with no restrictions
+- Uploaded MP3/WAV files always work — no restrictions
 
 ## Running on Android (Termux)
 
@@ -253,12 +387,13 @@ Music-Broadcast/
 
 | Version | Changes |
 |---|---|
-| **v9.2** | Emoji reactions 😊😢😭😡🔥❤️👏😂 (floating animation, real-time broadcast), message notification toast (bottom-left when sidebar closed), Co-DJ mode 🎧 toggle (guests add directly, host controls with one button) |
-| **v9.1** | Song duplicate warning (⚠️ blocks re-adding same song), volume slider for uploaded audio, username rename mid-session (✏️), LAN/Public network toggle for invite links |
-| **v9** | Guest song suggestions (💡 approve/reject), seek/progress bar, queue reorder ▲▼, repeat cycle (Off→All→One), keyboard shortcuts, auto-reconnect overlay, now-playing toast, invite link safety (locked join mode), host kick user 🚫, direct audio URL link, playlist export 💾 + import 📋, song play history, chat sidebar closed by default, Vite dev proxy for YouTube search API |
-| v8 | YouTube search, queue loop 🔄, manual host transfer 👑, invite link + QR code, background playback fixes (persistent keepalive, Media Session play/pause, visibility re-sync) |
+| **latest** | Queue shuffle 🔀, previous song ⏮, sleep timer ⏰, skip announcement toast, click-to-play queued songs, join notifications, host approval gate 🚪, room password, share/revoke control (multi-host), auto-save playlist to localStorage, sessionStorage mobile rejoin fix, clipboard fallback for LAN HTTP |
+| **v9.2** | Emoji reactions 😊😢😭😡🔥❤️👏😂, message notification toast, Co-DJ mode 🎧 |
+| **v9.1** | Song duplicate warning, volume slider, username rename ✏️, LAN/Public network toggle |
+| **v9** | Guest suggestions 💡, seek bar, queue reorder ▲▼, repeat cycle, keyboard shortcuts, auto-reconnect, now-playing toast, invite link safety, kick user 🚫, audio URL link, playlist export/import 💾📋, song history |
+| v8 | YouTube search, queue loop, host transfer, invite link + QR code, background playback fixes |
 | v7 | Responsive layout — mobile sidebar overlay, chat unread badge |
-| v6 | Background playback (Wake Lock + Media Session), song repeat 🔁 |
+| v6 | Background playback (Wake Lock + Media Session), song repeat |
 | v5 | Per-viewer YouTube quality selector |
 | v4 | Video size controls (min/normal/max/fullscreen) |
 | v3 | Host restore on rejoin |
