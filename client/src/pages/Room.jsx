@@ -378,7 +378,14 @@ export default function Room() {
   }
 
   function copyInviteLink() {
-    copyText(getInviteUrl(), () => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000) })
+    const url = getInviteUrl()
+    // Mobile: open native share sheet (WhatsApp, SMS, Telegram, etc.)
+    if (navigator.share) {
+      navigator.share({ title: `Join Music Room ${code}`, url }).catch(() => {})
+    } else {
+      // Desktop: copy to clipboard
+      copyText(url, () => { setLinkCopied(true); setTimeout(() => setLinkCopied(false), 2000) })
+    }
   }
 
   function downloadPlaylist() {
