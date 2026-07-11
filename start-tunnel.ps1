@@ -94,3 +94,4 @@ finally {
     Stop-Process -Id $cfProc.Id -Force -ErrorAction SilentlyContinue
     Write-Host "Done." -ForegroundColor DarkGray
 }
+
