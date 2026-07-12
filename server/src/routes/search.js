@@ -3,9 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 
-// Read API key from network.config.json at request time
-// (so it picks up changes without server restart)
+// Read API key - Environment variable first (for Koyeb/production),
+// then config file fallback (for local development)
 function getApiKey() {
+  // Priority 1: Environment variable
+  if (process.env.YOUTUBE_API_KEY) {
+    return process.env.YOUTUBE_API_KEY;
+  }
+  
+  // Priority 2: Config file (local dev)
   try {
     const cfg = JSON.parse(
       fs.readFileSync(path.join(__dirname, '../../../network.config.json'), 'utf-8')

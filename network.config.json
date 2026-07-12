@@ -1,6 +1,6 @@
 {
-  "mode": "lan",
+  "mode": "tunnel",
   "port": 3001,
   "tunnelUrl": "",
-  "youtubeApiKey": "AIzaSyBGJDYFdJm_O55PzEZDUu5DMNFOuYJqIuo"
+  "youtubeApiKey": ""
 }
